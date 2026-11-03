@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches the Flutter splash screen's starting gradient color, so the
+         native launch background and the animated splash hand off without
+         a white flash in between. -->
+    <color name="launch_background">#1A0033</color>
+</resources>

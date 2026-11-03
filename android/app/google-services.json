@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "982511618078",
+    "project_id": "ourshelf-de6b0",
+    "storage_bucket": "ourshelf-de6b0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:982511618078:android:9e2cf6143176f26e20460f",
+        "android_client_info": {
+          "package_name": "com.ourshelf.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "982511618078-lb4qmn33br0ksqu5o3c2u5r50cmvac2m.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.ourshelf.app",
+            "certificate_hash": "2b42c8a857d811173100cba198237e54b3d269b8"
+          }
+        },
+        {
+          "client_id": "982511618078-m5ngkm3q9fhu76p3g6tgvpcq79poesv9.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBCfkJXLHZq-A5mwfgMayLKlE6OwnhHqxY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "982511618078-m5ngkm3q9fhu76p3g6tgvpcq79poesv9.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
