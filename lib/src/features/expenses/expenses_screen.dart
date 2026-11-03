@@ -4,8 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app.dart';
 import '../../data/providers.dart';
 import '../../data/shopping_item.dart';
-import '../../widgets/empty_state.dart';
-import '../../widgets/loading_skeleton.dart';
 import '../../widgets/motion.dart';
 
 /// A basic per-group spend summary: total spent, how much each member paid,
@@ -33,10 +31,8 @@ class ExpensesScreen extends ConsumerWidget {
           items: items,
           memberCount: group?.members.length ?? 1,
         ),
-        loading: () => const LoadingSkeletonList(count: 4),
-        error: (e, _) => Center(
-          child: Text('Could not load expenses: $e', style: const TextStyle(color: ourShelfTextSecondary)),
-        ),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Could not load expenses: $e')),
       ),
     );
   }
@@ -75,10 +71,15 @@ class _ExpensesBody extends StatelessWidget {
         : spentThisMonth;
 
     if (totalsByPayer.isEmpty) {
-      return const EmptyState(
-        icon: Icons.receipt_long_outlined,
-        title: 'No expenses tracked yet',
-        message: 'Mark items bought and add a price to start tracking who paid what.',
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text(
+            'No purchases with a price yet. Mark items bought and add a '
+            'price to see spending here.',
+            textAlign: TextAlign.center,
+          ),
+        ),
       );
     }
 

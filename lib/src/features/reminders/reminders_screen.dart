@@ -5,8 +5,6 @@ import '../../app.dart';
 import '../../auth/auth_providers.dart';
 import '../../data/group.dart';
 import '../../data/providers.dart';
-import '../../widgets/empty_state.dart';
-import '../../widgets/loading_skeleton.dart';
 import '../../widgets/motion.dart';
 
 /// Recurring household essentials — "LPG refill every 30 days" — that
@@ -34,11 +32,15 @@ class RemindersScreen extends ConsumerWidget {
       body: remindersAsync.when(
         data: (reminders) {
           if (reminders.isEmpty) {
-            return const EmptyState(
-              icon: Icons.event_repeat_outlined,
-              title: 'No reminders set',
-              message: 'Add recurring essentials like an LPG refill or water cans '
-                  'and never run out again.',
+            return const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Text(
+                  'No reminders yet — add recurring essentials like an '
+                  'LPG refill or water cans.',
+                  textAlign: TextAlign.center,
+                ),
+              ),
             );
           }
           final sorted = [...reminders]
@@ -116,10 +118,8 @@ class RemindersScreen extends ConsumerWidget {
             },
           );
         },
-        loading: () => const LoadingSkeletonList(count: 4),
-        error: (e, _) => Center(
-          child: Text('Could not load reminders: $e', style: const TextStyle(color: ourShelfTextSecondary)),
-        ),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Could not load reminders: $e')),
       ),
       floatingActionButton: isViewer
           ? null

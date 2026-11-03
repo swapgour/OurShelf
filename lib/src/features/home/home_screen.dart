@@ -8,8 +8,6 @@ import '../../data/pantry_item.dart';
 import '../../data/providers.dart';
 import '../../data/shopping_item.dart';
 import '../../data/user_profile.dart';
-import '../../widgets/empty_state.dart';
-import '../../widgets/loading_skeleton.dart';
 import '../../widgets/motion.dart';
 import '../activity/activity_screen.dart';
 import '../ai/ask_ai_screen.dart';
@@ -29,15 +27,6 @@ String _greeting() {
   if (hour < 12) return 'Good Morning';
   if (hour < 17) return 'Good Afternoon';
   return 'Good Evening';
-}
-
-String _relativeTime(DateTime? time) {
-  if (time == null) return 'just now';
-  final diff = DateTime.now().difference(time);
-  if (diff.inMinutes < 1) return 'just now';
-  if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-  if (diff.inHours < 24) return '${diff.inHours}h ago';
-  return '${diff.inDays}d ago';
 }
 
 /// The Home tab: a real dashboard (not a module launcher) — what's left to
@@ -131,8 +120,8 @@ class HomeScreen extends ConsumerWidget {
                                         '${_greeting()}, $name',
                                         overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(
-                                          fontSize: 24,
-                                          fontWeight: FontWeight.w700,
+                                          fontSize: 19,
+                                          fontWeight: FontWeight.bold,
                                           color: ourShelfTextPrimary,
                                         ),
                                       ),
@@ -143,11 +132,10 @@ class HomeScreen extends ConsumerWidget {
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 3),
+                                const SizedBox(height: 2),
                                 Text(
-                                  "Let's keep your kitchen organised · ${group?.name ?? 'Your group'}",
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(color: ourShelfTextSecondary, fontSize: 13),
+                                  group?.name ?? 'Your group',
+                                  style: const TextStyle(color: ourShelfTextSecondary),
                                 ),
                               ],
                             ),
@@ -426,34 +414,32 @@ class HomeScreen extends ConsumerWidget {
                   activityAsync.when(
                     data: (entries) {
                       if (entries.isEmpty) {
-                        return EmptyState(
-                          compact: true,
-                          icon: Icons.history_toggle_off,
-                          title: 'Your household activity starts here',
-                          message: 'Your shopping and purchase updates will appear here.',
-                          ctaLabel: 'Add your first item',
-                          onCta: () => onOpenTab(1),
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Text(
+                            'Nothing yet — actions on your list will show up here.',
+                            style: TextStyle(color: ourShelfTextSecondary),
+                          ),
                         );
                       }
                       return Column(
                         children: entries.take(3).map((e) {
                           return ListTile(
                             contentPadding: EdgeInsets.zero,
-                            leading: Container(
-                              padding: const EdgeInsets.all(9),
-                              decoration: BoxDecoration(
-                                color: ourShelfSeed.withValues(alpha: 0.1),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(Icons.history, color: ourShelfSeed, size: 18),
+                            leading: const CircleAvatar(
+                              backgroundColor: Color(0x1A54277D),
+                              child: Icon(Icons.history, color: ourShelfSeed, size: 18),
                             ),
                             title: Text(e.summary),
-                            subtitle: Text('${e.actorName} · ${_relativeTime(e.createdAt)}'),
+                            subtitle: Text(e.actorName),
                           );
                         }).toList(),
                       );
                     },
-                    loading: () => const LoadingSkeletonList(count: 2),
+                    loading: () => const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
                     error: (_, _) => const SizedBox.shrink(),
                   ),
                 ],
@@ -566,41 +552,25 @@ class _QuickAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
+      color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: ourShelfBorder),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(9),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(11),
-                ),
-                child: Icon(icon, color: color, size: 19),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                label,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: ourShelfTextPrimary,
-                ),
-              ),
-            ],
-          ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+              child: Icon(icon, color: Colors.white, size: 20),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+            ),
+          ],
         ),
       ),
     );

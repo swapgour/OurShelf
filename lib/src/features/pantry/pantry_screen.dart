@@ -7,15 +7,22 @@ import '../../data/category_style.dart';
 import '../../data/group.dart';
 import '../../data/pantry_item.dart';
 import '../../data/providers.dart';
-import '../../widgets/empty_state.dart';
-import '../../widgets/loading_skeleton.dart';
 import '../../widgets/motion.dart';
-import '../../widgets/stock_status_badge.dart';
 
-// Short form for the compact level-setting chips — the longer
-// stockStatusLabel() wording ("Out of Stock") is for read-only badges, not
-// a 4-across tappable control.
-String _shortLevelLabel(StockLevel level) {
+Color _levelColor(StockLevel level) {
+  switch (level) {
+    case StockLevel.full:
+      return ourShelfSuccess;
+    case StockLevel.half:
+      return ourShelfWarning;
+    case StockLevel.low:
+      return const Color(0xFFE8822E);
+    case StockLevel.out:
+      return ourShelfError;
+  }
+}
+
+String _levelLabel(StockLevel level) {
   switch (level) {
     case StockLevel.full:
       return 'Full';
@@ -67,17 +74,8 @@ class _PantryScreenState extends ConsumerState<PantryScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        toolbarHeight: 64,
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('My Pantry', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-            Text(
-              'Everything you have at home, organised',
-              style: TextStyle(fontSize: 12, color: Colors.white70, fontWeight: FontWeight.normal),
-            ),
-          ],
+        title: Text(
+          itemsAsync.value == null ? 'Pantry' : 'Pantry (${itemsAsync.value!.length})',
         ),
         flexibleSpace: const DecoratedBox(
           decoration: BoxDecoration(gradient: royalHeaderGradient),
@@ -86,16 +84,20 @@ class _PantryScreenState extends ConsumerState<PantryScreen> {
       body: itemsAsync.when(
         data: (items) {
           if (items.isEmpty) {
-            return const EmptyState(
-              icon: Icons.kitchen_outlined,
-              title: 'Your pantry is waiting to be filled',
-              message: 'Mark items as purchased to start tracking your inventory here.',
+            return const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Text(
+                  "Nothing tracked yet — items appear here once they're "
+                  'marked bought on the shared list.',
+                  textAlign: TextAlign.center,
+                ),
+              ),
             );
           }
           final lowStock = items
               .where((i) => i.level == StockLevel.low || i.level == StockLevel.out)
               .toList();
-          final outOfStock = items.where((i) => i.level == StockLevel.out).toList();
           final expiringSoon = items.where((i) => i.isExpiringSoon).toList();
           final visible = switch (_filter) {
             _Filter.all => items,
@@ -105,24 +107,6 @@ class _PantryScreenState extends ConsumerState<PantryScreen> {
 
           return Column(
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _OverviewStat(label: 'Total items', value: items.length, color: ourShelfSeed),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _OverviewStat(label: 'Low stock', value: lowStock.length, color: ourShelfWarning),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _OverviewStat(label: 'Out of stock', value: outOfStock.length, color: ourShelfError),
-                    ),
-                  ],
-                ),
-              ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
                 child: Row(
@@ -174,47 +158,8 @@ class _PantryScreenState extends ConsumerState<PantryScreen> {
             ],
           );
         },
-        loading: () => const LoadingSkeletonList(count: 6),
-        error: (e, _) => Center(
-          child: Text('Could not load pantry: $e', style: const TextStyle(color: ourShelfTextSecondary)),
-        ),
-      ),
-    );
-  }
-}
-
-/// One number in the pantry overview strip (Total / Low stock / Out of
-/// stock) — a compact summary so the screen says something useful at a
-/// glance before the user scrolls the item list.
-class _OverviewStat extends StatelessWidget {
-  const _OverviewStat({required this.label, required this.value, required this.color});
-
-  final String label;
-  final int value;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: ourShelfBorder),
-      ),
-      child: Column(
-        children: [
-          Text(
-            '$value',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: color),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 11, color: ourShelfTextSecondary, fontWeight: FontWeight.w600),
-          ),
-        ],
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Could not load pantry: $e')),
       ),
     );
   }
@@ -320,7 +265,7 @@ class _PantryTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final lowStock = item.level == StockLevel.low || item.level == StockLevel.out;
-    final color = stockStatusColor(item.level);
+    final color = _levelColor(item.level);
     final accent = colorForCategory(item.category);
 
     return Container(
@@ -412,7 +357,7 @@ class _PantryTile extends ConsumerWidget {
               ),
               const SizedBox(width: 10),
               Text(
-                stockStatusLabel(item.level),
+                _levelLabel(item.level),
                 style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12.5),
               ),
             ],
@@ -422,9 +367,9 @@ class _PantryTile extends ConsumerWidget {
             spacing: 6,
             children: StockLevel.values.map((level) {
               final selected = level == item.level;
-              final c = stockStatusColor(level);
+              final c = _levelColor(level);
               return ChoiceChip(
-                label: Text(_shortLevelLabel(level)),
+                label: Text(_levelLabel(level)),
                 selected: selected,
                 selectedColor: c.withValues(alpha: 0.18),
                 labelStyle: TextStyle(

@@ -84,6 +84,7 @@ class _AddPurchaseScreenState extends ConsumerState<AddPurchaseScreen> {
     await commitPurchaseMatches(
       shoppingRepo: ref.read(shoppingListRepositoryProvider),
       activityRepo: ref.read(activityRepositoryProvider),
+      pantryRepo: ref.read(pantryRepositoryProvider),
       groupId: widget.groupId,
       matches: matches,
       selected: List.filled(matches.length, true),
@@ -239,11 +240,6 @@ class _AddPurchaseScreenState extends ConsumerState<AddPurchaseScreen> {
                   ],
                   onChanged: (v) => setState(() => _paidByUid = v),
                 ),
-                const SizedBox(height: 20),
-                _PurchaseSummaryCard(
-                  itemCount: _lines.where((l) => l.name.text.trim().isNotEmpty).length,
-                  total: _total,
-                ),
                 const SizedBox(height: 90),
               ],
             ),
@@ -262,59 +258,9 @@ class _AddPurchaseScreenState extends ConsumerState<AddPurchaseScreen> {
                     height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                   )
-                : Text('Save Purchase · ₹${_total.toStringAsFixed(0)}'),
+                : Text('Save Purchase (₹${_total.toStringAsFixed(0)})'),
           ),
         ),
-      ),
-    );
-  }
-}
-
-/// "Items: 3 / Total Amount: ₹750" — a clear purchase summary before the
-/// Save button, instead of the total only ever appearing on the button
-/// label.
-class _PurchaseSummaryCard extends StatelessWidget {
-  const _PurchaseSummaryCard({required this.itemCount, required this.total});
-
-  final int itemCount;
-  final double total;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: ourShelfLightAccent.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: ourShelfBorder),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Purchase Summary',
-            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: ourShelfTextPrimary),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              const Text('Items', style: TextStyle(color: ourShelfTextSecondary)),
-              const Spacer(),
-              Text('$itemCount', style: const TextStyle(fontWeight: FontWeight.w600)),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              const Text('Total Amount', style: TextStyle(color: ourShelfTextSecondary)),
-              const Spacer(),
-              Text(
-                '₹${total.toStringAsFixed(0)}',
-                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18, color: ourShelfSeed),
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }

@@ -6,8 +6,6 @@ import '../../app.dart';
 import '../../data/category_style.dart';
 import '../../data/providers.dart';
 import '../../data/shopping_item.dart';
-import '../../widgets/empty_state.dart';
-import '../../widgets/loading_skeleton.dart';
 import '../../widgets/motion.dart';
 
 /// The "where did the money go" screen: a touch-interactive pie chart of
@@ -24,17 +22,15 @@ class DashboardScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Reports & Insights'),
+        title: const Text('Dashboard'),
         flexibleSpace: const DecoratedBox(
           decoration: BoxDecoration(gradient: royalHeaderGradient),
         ),
       ),
       body: itemsAsync.when(
         data: (items) => _DashboardBody(items: items),
-        loading: () => const LoadingSkeletonList(count: 4),
-        error: (e, _) => Center(
-          child: Text('Could not load the dashboard: $e', style: const TextStyle(color: ourShelfTextSecondary)),
-        ),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Could not load the dashboard: $e')),
       ),
     );
   }
@@ -59,53 +55,41 @@ class _DashboardBodyState extends State<_DashboardBody> {
         .toList();
 
     if (paid.isEmpty) {
-      return const EmptyState(
-        icon: Icons.pie_chart_outline,
-        title: 'No spending to show yet',
-        message: 'Mark items bought with a price and your spending '
-            'breakdown will show up here.',
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text(
+            'No priced purchases yet. Mark items bought with a price to '
+            'see your spending breakdown here.',
+            textAlign: TextAlign.center,
+          ),
+        ),
       );
     }
 
     double total = 0;
     double spentThisMonth = 0;
-    double spentLastMonth = 0;
     final now = DateTime.now();
-    final lastMonth = DateTime(now.year, now.month - 1);
     final byCategory = <String, double>{};
-    final byPayer = <String, double>{};
     for (final item in paid) {
       final price = item.price!;
       total += price;
       byCategory[item.category] = (byCategory[item.category] ?? 0) + price;
-      final payer = item.paidByName ?? item.addedByName;
-      byPayer[payer] = (byPayer[payer] ?? 0) + price;
       final boughtAt = item.boughtAt;
       if (boughtAt != null &&
           boughtAt.year == now.year &&
           boughtAt.month == now.month) {
         spentThisMonth += price;
-      } else if (boughtAt != null &&
-          boughtAt.year == lastMonth.year &&
-          boughtAt.month == lastMonth.month) {
-        spentLastMonth += price;
       }
     }
     final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
     final projected = now.day > 0
         ? spentThisMonth / now.day * daysInMonth
         : spentThisMonth;
-    final monthDelta = spentLastMonth > 0
-        ? (spentThisMonth - spentLastMonth) / spentLastMonth * 100
-        : null;
 
     final entries = byCategory.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
     final topCategory = entries.first;
-
-    final payerEntries = byPayer.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-    final topPayer = payerEntries.first;
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -161,84 +145,7 @@ class _DashboardBodyState extends State<_DashboardBody> {
             ),
           ],
         ),
-        const SizedBox(height: 12),
-        FadeSlideIn(
-          delay: const Duration(milliseconds: 200),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: ourShelfBorder),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Who paid the most',
-                        style: TextStyle(fontSize: 12, color: ourShelfTextSecondary, fontWeight: FontWeight.w600),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        topPayer.key,
-                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-                      ),
-                      Text(
-                        '₹${topPayer.value.toStringAsFixed(0)} spent',
-                        style: const TextStyle(color: ourShelfTextSecondary, fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(width: 1, height: 36, color: ourShelfBorder),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Vs. last month',
-                        style: TextStyle(fontSize: 12, color: ourShelfTextSecondary, fontWeight: FontWeight.w600),
-                      ),
-                      const SizedBox(height: 4),
-                      if (monthDelta == null)
-                        const Text(
-                          'No data yet',
-                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: ourShelfTextSecondary),
-                        )
-                      else
-                        Row(
-                          children: [
-                            Icon(
-                              monthDelta >= 0 ? Icons.arrow_upward : Icons.arrow_downward,
-                              size: 16,
-                              color: monthDelta >= 0 ? ourShelfError : ourShelfSuccess,
-                            ),
-                            Text(
-                              '${monthDelta.abs().toStringAsFixed(0)}%',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 15,
-                                color: monthDelta >= 0 ? ourShelfError : ourShelfSuccess,
-                              ),
-                            ),
-                          ],
-                        ),
-                      Text(
-                        'Last month: ₹${spentLastMonth.toStringAsFixed(0)}',
-                        style: const TextStyle(color: ourShelfTextSecondary, fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 24),
         FadeSlideIn(
           delay: const Duration(milliseconds: 220),
           child: Container(
@@ -248,7 +155,7 @@ class _DashboardBodyState extends State<_DashboardBody> {
               borderRadius: BorderRadius.circular(22),
               boxShadow: [
                 BoxShadow(
-                  color: ourShelfSeed.withValues(alpha: 0.08),
+                  color: const Color(0xFF4A148C).withValues(alpha: 0.08),
                   blurRadius: 20,
                   offset: const Offset(0, 8),
                 ),
@@ -327,7 +234,7 @@ class _DashboardBodyState extends State<_DashboardBody> {
                               style: const TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
-                                color: ourShelfSeed,
+                                color: Color(0xFF4A148C),
                               ),
                             ),
                             Text(
@@ -337,7 +244,7 @@ class _DashboardBodyState extends State<_DashboardBody> {
                                   : 'Total',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: ourShelfTextSecondary,
+                                color: Colors.grey.shade600,
                               ),
                               textAlign: TextAlign.center,
                             ),
@@ -383,7 +290,7 @@ class _DashboardBodyState extends State<_DashboardBody> {
                       Icon(
                         iconForCategory(entry.key),
                         size: 16,
-                        color: ourShelfTextSecondary,
+                        color: Colors.grey.shade600,
                       ),
                       const SizedBox(width: 6),
                       Expanded(
@@ -402,7 +309,7 @@ class _DashboardBodyState extends State<_DashboardBody> {
                         child: Text(
                           '${percent.toStringAsFixed(0)}%',
                           textAlign: TextAlign.right,
-                          style: TextStyle(color: ourShelfTextSecondary),
+                          style: TextStyle(color: Colors.grey.shade600),
                         ),
                       ),
                     ],
@@ -455,12 +362,12 @@ class _StatTile extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [ourShelfSeed, ourShelfSecondary],
+          colors: [Color(0xFF4A148C), Color(0xFF6A1B9A)],
         ),
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: ourShelfSeed.withValues(alpha: 0.3),
+            color: const Color(0xFF4A148C).withValues(alpha: 0.3),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),

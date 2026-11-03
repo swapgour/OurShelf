@@ -150,6 +150,7 @@ class _ScanReceiptScreenState extends ConsumerState<ScanReceiptScreen> {
     await commitPurchaseMatches(
       shoppingRepo: ref.read(shoppingListRepositoryProvider),
       activityRepo: ref.read(activityRepositoryProvider),
+      pantryRepo: ref.read(pantryRepositoryProvider),
       groupId: widget.groupId,
       matches: _matches,
       selected: _selected,
@@ -237,13 +238,13 @@ class _PickImageBody extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.all(26),
                 decoration: BoxDecoration(
-                  color: ourShelfSeed.withValues(alpha: 0.1),
+                  color: Color(0xFF4A148C).withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
                   Icons.document_scanner_outlined,
                   size: 56,
-                  color: ourShelfSeed,
+                  color: Color(0xFF4A148C),
                 ),
               ),
             ),
@@ -258,7 +259,7 @@ class _PickImageBody extends StatelessWidget {
               "or printed list you've already bought — we'll read it and "
               "mark those items bought for you.",
               textAlign: TextAlign.center,
-              style: TextStyle(color: ourShelfTextSecondary),
+              style: TextStyle(color: Colors.grey.shade600),
             ),
             const SizedBox(height: 28),
             SizedBox(
@@ -303,7 +304,7 @@ class _ReadingBody extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          CircularProgressIndicator(color: ourShelfSeed),
+          CircularProgressIndicator(color: Color(0xFF4A148C)),
           SizedBox(height: 16),
           Text('Reading your list…'),
         ],
@@ -324,7 +325,7 @@ class _EmptyBody extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       child: Column(
         children: [
-          Icon(Icons.search_off, size: 48, color: ourShelfTextSecondary),
+          Icon(Icons.search_off, size: 48, color: Colors.grey.shade600),
           const SizedBox(height: 12),
           Text(
             rawLines.isEmpty
@@ -338,7 +339,7 @@ class _EmptyBody extends StatelessWidget {
             'Lay the receipt flat on a plain, well-lit surface, avoid glare '
             'and shadows, and fill the frame with just the receipt.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: ourShelfTextSecondary),
+            style: TextStyle(color: Colors.grey.shade600),
           ),
           const SizedBox(height: 20),
           FilledButton(onPressed: onRetry, child: const Text('Try again')),
@@ -348,7 +349,7 @@ class _EmptyBody extends StatelessWidget {
               alignment: Alignment.centerLeft,
               child: Text(
                 'What OCR read from the photo:',
-                style: TextStyle(fontWeight: FontWeight.w600, color: ourShelfTextSecondary),
+                style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey.shade600),
               ),
             ),
             const SizedBox(height: 8),
@@ -356,9 +357,9 @@ class _EmptyBody extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: ourShelfBackground,
+                color: Colors.grey.shade100,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: ourShelfBorder),
+                border: Border.all(color: Colors.grey.shade300),
               ),
               child: Text(
                 rawLines.join('\n'),
@@ -406,7 +407,7 @@ class _ReviewBody extends StatelessWidget {
             alignment: Alignment.centerLeft,
             child: Text(
               'Found ${matches.length} item${matches.length == 1 ? '' : 's'} — review before adding',
-              style: TextStyle(color: ourShelfTextSecondary, fontSize: 13),
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
             ),
           ),
         ),

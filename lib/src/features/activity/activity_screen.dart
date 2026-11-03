@@ -3,8 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app.dart';
 import '../../data/providers.dart';
-import '../../widgets/empty_state.dart';
-import '../../widgets/loading_skeleton.dart';
 import '../../widgets/motion.dart';
 
 String _relativeTime(DateTime? time) {
@@ -36,10 +34,15 @@ class ActivityScreen extends ConsumerWidget {
       body: entriesAsync.when(
         data: (entries) {
           if (entries.isEmpty) {
-            return const EmptyState(
-              icon: Icons.history_toggle_off,
-              title: 'Your household activity starts here',
-              message: 'Your shopping and purchase updates will appear here.',
+            return const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Text(
+                  'Nothing has happened yet — actions on the list and '
+                  'group will show up here.',
+                  textAlign: TextAlign.center,
+                ),
+              ),
             );
           }
           return ListView.builder(
@@ -88,10 +91,8 @@ class ActivityScreen extends ConsumerWidget {
             },
           );
         },
-        loading: () => const LoadingSkeletonList(count: 6),
-        error: (e, _) => Center(
-          child: Text('Could not load activity: $e', style: const TextStyle(color: ourShelfTextSecondary)),
-        ),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Could not load activity: $e')),
       ),
     );
   }

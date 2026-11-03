@@ -11,8 +11,6 @@ import '../../data/providers.dart';
 import '../../data/shopping_item.dart';
 import '../../data/templates.dart';
 import '../../data/user_profile.dart';
-import '../../widgets/empty_state.dart';
-import '../../widgets/loading_skeleton.dart';
 import '../activity/activity_screen.dart';
 import '../expenses/expenses_screen.dart';
 import '../groups/group_sheet.dart';
@@ -280,9 +278,12 @@ class _HomeContent extends ConsumerWidget {
               groupId: groupId,
               items: items,
               isViewer: isViewer,
-              onAddItem: () => _showAddItemSheet(context, ref, groupId),
             ),
-            loading: () => const LoadingSkeletonList(count: 5),
+            loading: () =>
+                const Center(child: Padding(
+                  padding: EdgeInsets.all(24),
+                  child: CircularProgressIndicator(),
+                )),
             error: (e, _) => Padding(
               padding: const EdgeInsets.all(16),
               child: Text('Could not load the list: $e'),
@@ -393,13 +394,11 @@ class _ShoppingList extends StatelessWidget {
     required this.groupId,
     required this.items,
     required this.isViewer,
-    required this.onAddItem,
   });
 
   final String groupId;
   final List<ShoppingItem> items;
   final bool isViewer;
-  final VoidCallback onAddItem;
 
   @override
   Widget build(BuildContext context) {
@@ -407,12 +406,14 @@ class _ShoppingList extends StatelessWidget {
     final bought = items.where((i) => i.status == ItemStatus.bought).toList();
 
     if (items.isEmpty) {
-      return EmptyState(
-        icon: Icons.checklist_outlined,
-        title: 'Your shopping list is empty',
-        message: 'Add what your household needs and everyone sees it instantly.',
-        ctaLabel: isViewer ? null : 'Add an item',
-        onCta: isViewer ? null : onAddItem,
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 32),
+        child: Center(
+          child: Text(
+            'No items yet. Tap "Add item" to build your shared list.',
+            textAlign: TextAlign.center,
+          ),
+        ),
       );
     }
 
@@ -426,15 +427,15 @@ class _ShoppingList extends StatelessWidget {
       children: [
         Row(
           children: [
-            const Icon(Icons.shopping_cart_outlined, size: 20, color: ourShelfSeed),
+            Icon(
+              Icons.shopping_cart_outlined,
+              size: 20,
+              color: Theme.of(context).colorScheme.primary,
+            ),
             const SizedBox(width: 6),
             Text(
               'To buy (${toBuy.length})',
-              style: const TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-                color: ourShelfTextPrimary,
-              ),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -456,10 +457,10 @@ class _ShoppingList extends StatelessWidget {
                   const SizedBox(width: 6),
                   Text(
                     entry.key,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: ourShelfTextSecondary,
+                      color: Colors.grey.shade700,
                       letterSpacing: 0.3,
                     ),
                   ),
@@ -475,15 +476,15 @@ class _ShoppingList extends StatelessWidget {
           const SizedBox(height: 20),
           Row(
             children: [
-              const Icon(Icons.check_circle_outline, size: 20, color: ourShelfSuccess),
+              const Icon(
+                Icons.check_circle_outline,
+                size: 20,
+                color: Colors.grey,
+              ),
               const SizedBox(width: 6),
               Text(
                 'Bought (${bought.length})',
-                style: const TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                  color: ourShelfTextPrimary,
-                ),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ],
           ),
@@ -656,7 +657,7 @@ class _ItemTile extends ConsumerWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
         decoration: BoxDecoration(
-          color: bought ? ourShelfLightAccent.withValues(alpha: 0.4) : ourShelfCardBackground,
+          color: bought ? Colors.grey.shade100 : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border(left: BorderSide(color: accent, width: 4)),
           boxShadow: bought
@@ -713,7 +714,7 @@ class _ItemTile extends ConsumerWidget {
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
-                            color: bought ? ourShelfTextSecondary : ourShelfTextPrimary,
+                            color: bought ? Colors.grey : Colors.black87,
                             decoration: bought
                                 ? TextDecoration.lineThrough
                                 : TextDecoration.none,
@@ -723,9 +724,9 @@ class _ItemTile extends ConsumerWidget {
                         const SizedBox(height: 2),
                         Text(
                           details,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
-                            color: ourShelfTextSecondary,
+                            color: Colors.grey.shade600,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -798,7 +799,7 @@ class _AnimatedCheck extends StatelessWidget {
           shape: BoxShape.circle,
           color: checked ? accent : Colors.transparent,
           border: Border.all(
-            color: checked ? accent : ourShelfTextSecondary.withValues(alpha: 0.5),
+            color: checked ? accent : Colors.grey.shade400,
             width: 2,
           ),
         ),

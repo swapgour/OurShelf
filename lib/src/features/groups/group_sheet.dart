@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../app.dart';
 import '../../auth/auth_providers.dart';
 import '../../data/group.dart';
 import '../../data/providers.dart';
@@ -114,7 +113,7 @@ class _GroupSheetState extends ConsumerState<GroupSheet> {
         currentUid != null &&
         group.members.any((m) => m.uid == currentUid && m.role == 'admin');
 
-    return Padding(
+    return SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(
         20,
         20,
@@ -166,26 +165,9 @@ class _GroupSheetState extends ConsumerState<GroupSheet> {
             (m) => ListTile(
               dense: true,
               contentPadding: EdgeInsets.zero,
-              leading: CircleAvatar(
-                backgroundColor: ourShelfSeed.withValues(alpha: 0.12),
-                child: Text(
-                  m.displayName.isNotEmpty ? m.displayName[0].toUpperCase() : '?',
-                  style: const TextStyle(color: ourShelfSeed, fontWeight: FontWeight.bold),
-                ),
-              ),
+              leading: const Icon(Icons.person_outline),
               title: Text(m.displayName),
-              subtitle: Container(
-                margin: const EdgeInsets.only(top: 3),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: ourShelfLightAccent,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  m.role,
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: ourShelfSecondary),
-                ),
-              ),
+              subtitle: Text(m.role),
               trailing: isAdmin && m.uid != currentUid
                   ? Row(
                       mainAxisSize: MainAxisSize.min,
