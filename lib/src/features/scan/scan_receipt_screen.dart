@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -75,20 +76,52 @@ class _ScanReceiptScreenState extends ConsumerState<ScanReceiptScreen> {
     }
   }
 
-  // Cap how large a rendered bitmap can get in either dimension. Rendering
-  // a whole page at a flat 3x multiplier works for a normal single-page
-  // receipt, but a long order-history PDF (one very tall page) can balloon
-  // into a bitmap that fails to render or to OCR on-device — silently, so
-  // the scan just comes back empty with no clue why. Capping resolution
-  // and tiling tall pages (below) fixes that without losing quality on
-  // ordinary receipts.
-  static const _maxRenderDimension = 3200.0;
+  // A whole page rendered at a flat 3x multiplier works for a normal
+  // single-page receipt, but ML Kit silently finds nothing on a very tall,
+  // narrow image (a long order-confirmation PDF can be one page dozens of
+  // "screens" tall). pdfx's own cropRect-based tiling turned out to be
+  // unreliable at this scale (returns 0 text, or throws, on some tiles) —
+  // confirmed by direct on-device testing — so instead the WHOLE page is
+  // rendered once (that part works fine even for a huge bitmap) and then
+  // sliced into OCR-sized horizontal strips in pure Dart before each strip
+  // is recognized individually.
+  static const _maxRenderWidth = 3200.0;
+  static const _maxTotalHeight = 20000.0;
+  static const _sliceHeightPx = 3200;
 
-  /// Renders one page of a picked PDF to one or more images (tiling a very
-  /// tall page into vertical strips so no single bitmap exceeds the device's
-  /// practical rendering limits) and OCRs each with the same recognizer used
-  /// for photos, appending every line found to [rawLines]. A failure on one
-  /// strip is skipped rather than aborting the whole scan.
+  Future<List<Uint8List>> _sliceImage(Uint8List pngBytes, int sliceHeight) async {
+    final codec = await ui.instantiateImageCodec(pngBytes);
+    final frame = await codec.getNextFrame();
+    final image = frame.image;
+    final width = image.width;
+    final height = image.height;
+    final slices = <Uint8List>[];
+    for (var y = 0; y < height; y += sliceHeight) {
+      final h = math.min(sliceHeight, height - y);
+      final recorder = ui.PictureRecorder();
+      final canvas = Canvas(recorder);
+      canvas.drawImageRect(
+        image,
+        Rect.fromLTWH(0, y.toDouble(), width.toDouble(), h.toDouble()),
+        Rect.fromLTWH(0, 0, width.toDouble(), h.toDouble()),
+        Paint(),
+      );
+      final picture = recorder.endRecording();
+      final sliceImg = await picture.toImage(width, h);
+      final byteData = await sliceImg.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData != null) slices.add(byteData.buffer.asUint8List());
+      sliceImg.dispose();
+      picture.dispose();
+    }
+    image.dispose();
+    return slices;
+  }
+
+  /// Renders one page of a picked PDF (once, as a whole) and OCRs it —
+  /// sliced into strips first when it's tall enough that a single pass
+  /// would overwhelm the recognizer — appending every line found to
+  /// [rawLines]. A failure on one slice is skipped rather than aborting
+  /// the whole scan.
   Future<void> _renderAndOcrPage(
     pdfx.PdfPage page,
     TextRecognizer recognizer,
@@ -96,35 +129,32 @@ class _ScanReceiptScreenState extends ConsumerState<ScanReceiptScreen> {
     List<String> rawLines,
     int pageIndex,
   ) async {
-    const targetScale = 3.0;
-    final scale = math.min(
-      targetScale,
-      _maxRenderDimension / math.max(page.width, 1),
+    var scale = math.min(3.0, _maxRenderWidth / math.max(page.width, 1));
+    if (page.height * scale > _maxTotalHeight) {
+      scale = _maxTotalHeight / page.height;
+    }
+    final rendered = await page.render(
+      width: page.width * scale,
+      height: page.height * scale,
+      format: pdfx.PdfPageImageFormat.png,
     );
-    final tileHeightPt = _maxRenderDimension / scale;
-    final tileCount = (page.height / tileHeightPt).ceil().clamp(1, 1000);
+    if (rendered == null) return;
 
-    for (var t = 0; t < tileCount; t++) {
-      final top = t * tileHeightPt;
-      final height = math.min(tileHeightPt, page.height - top);
-      if (height <= 0) break;
+    final slices = (rendered.height ?? 0) > _sliceHeightPx
+        ? await _sliceImage(rendered.bytes, _sliceHeightPx)
+        : [rendered.bytes];
+
+    for (var t = 0; t < slices.length; t++) {
       try {
-        final rendered = await page.render(
-          width: page.width * scale,
-          height: height * scale,
-          format: pdfx.PdfPageImageFormat.png,
-          cropRect: tileCount > 1 ? Rect.fromLTWH(0, top, page.width, height) : null,
-        );
-        if (rendered == null) continue;
         final tempFile = File(
           '${Directory.systemTemp.path}/ourshelf_scan_${DateTime.now().microsecondsSinceEpoch}_${pageIndex}_$t.png',
         );
-        await tempFile.writeAsBytes(rendered.bytes);
+        await tempFile.writeAsBytes(slices[t]);
         tempFiles.add(tempFile);
         rawLines.addAll(await _ocrImageFile(recognizer, tempFile.path));
       } catch (_) {
-        // Skip this strip — a torn/oversized tile shouldn't blank out
-        // everything else the scan already found.
+        // Skip this slice — a bad strip shouldn't blank out everything
+        // else the scan already found.
       }
     }
   }

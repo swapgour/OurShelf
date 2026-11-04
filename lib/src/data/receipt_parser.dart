@@ -66,6 +66,27 @@ const _stopWords = <String>{
   'hsn',
   'sac',
   'description',
+  // E-commerce / app order-confirmation boilerplate (DMart, Blinkit,
+  // Zepto, etc. print a running "You Save" / "You Pay" line under every
+  // item instead of a single price column, plus order-metadata fields
+  // that would otherwise look like item names).
+  'you save',
+  'you pay',
+  'order number',
+  'ordered date',
+  'delivery address',
+  'delivery date',
+  'delivery charges',
+  'delivery',
+  'cart total',
+  'shipment',
+  'special offer',
+  'item details',
+  'approx',
+  'payment details',
+  'payment mode',
+  'payment received',
+  'time slot',
 };
 
 // Phrases that only ever show up in receipt boilerplate (shop header,
