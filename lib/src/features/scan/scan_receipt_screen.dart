@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -74,6 +75,60 @@ class _ScanReceiptScreenState extends ConsumerState<ScanReceiptScreen> {
     }
   }
 
+  // Cap how large a rendered bitmap can get in either dimension. Rendering
+  // a whole page at a flat 3x multiplier works for a normal single-page
+  // receipt, but a long order-history PDF (one very tall page) can balloon
+  // into a bitmap that fails to render or to OCR on-device — silently, so
+  // the scan just comes back empty with no clue why. Capping resolution
+  // and tiling tall pages (below) fixes that without losing quality on
+  // ordinary receipts.
+  static const _maxRenderDimension = 3200.0;
+
+  /// Renders one page of a picked PDF to one or more images (tiling a very
+  /// tall page into vertical strips so no single bitmap exceeds the device's
+  /// practical rendering limits) and OCRs each with the same recognizer used
+  /// for photos, appending every line found to [rawLines]. A failure on one
+  /// strip is skipped rather than aborting the whole scan.
+  Future<void> _renderAndOcrPage(
+    pdfx.PdfPage page,
+    TextRecognizer recognizer,
+    List<File> tempFiles,
+    List<String> rawLines,
+    int pageIndex,
+  ) async {
+    const targetScale = 3.0;
+    final scale = math.min(
+      targetScale,
+      _maxRenderDimension / math.max(page.width, 1),
+    );
+    final tileHeightPt = _maxRenderDimension / scale;
+    final tileCount = (page.height / tileHeightPt).ceil().clamp(1, 1000);
+
+    for (var t = 0; t < tileCount; t++) {
+      final top = t * tileHeightPt;
+      final height = math.min(tileHeightPt, page.height - top);
+      if (height <= 0) break;
+      try {
+        final rendered = await page.render(
+          width: page.width * scale,
+          height: height * scale,
+          format: pdfx.PdfPageImageFormat.png,
+          cropRect: tileCount > 1 ? Rect.fromLTWH(0, top, page.width, height) : null,
+        );
+        if (rendered == null) continue;
+        final tempFile = File(
+          '${Directory.systemTemp.path}/ourshelf_scan_${DateTime.now().microsecondsSinceEpoch}_${pageIndex}_$t.png',
+        );
+        await tempFile.writeAsBytes(rendered.bytes);
+        tempFiles.add(tempFile);
+        rawLines.addAll(await _ocrImageFile(recognizer, tempFile.path));
+      } catch (_) {
+        // Skip this strip — a torn/oversized tile shouldn't blank out
+        // everything else the scan already found.
+      }
+    }
+  }
+
   /// Renders each page of a picked PDF to an image (pdfx) and OCRs each one
   /// with the same recognizer used for photos — so a PDF receipt/bill works
   /// exactly like a photographed one.
@@ -94,22 +149,11 @@ class _ScanReceiptScreenState extends ConsumerState<ScanReceiptScreen> {
       final rawLines = <String>[];
       for (var i = 1; i <= document.pagesCount; i++) {
         final page = await document.getPage(i);
-        // Render well above the PDF's native point size so small receipt
-        // text stays legible to OCR instead of coming out blurry.
-        final rendered = await page.render(
-          width: page.width * 3,
-          height: page.height * 3,
-          format: pdfx.PdfPageImageFormat.png,
-        );
-        await page.close();
-        if (rendered == null) continue;
-
-        final tempFile = File(
-          '${Directory.systemTemp.path}/ourshelf_scan_${DateTime.now().microsecondsSinceEpoch}_$i.png',
-        );
-        await tempFile.writeAsBytes(rendered.bytes);
-        tempFiles.add(tempFile);
-        rawLines.addAll(await _ocrImageFile(recognizer, tempFile.path));
+        try {
+          await _renderAndOcrPage(page, recognizer, tempFiles, rawLines, i);
+        } finally {
+          await page.close();
+        }
       }
       await _finishWithLines(rawLines);
     } catch (_) {
