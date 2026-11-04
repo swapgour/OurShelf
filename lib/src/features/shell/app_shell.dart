@@ -67,7 +67,7 @@ class _BottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ourShelfCard,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.06),
@@ -101,8 +101,8 @@ class _BottomNav extends StatelessWidget {
                       width: 48,
                       height: 48,
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [ourShelfAccent, Color(0xFFF2CC6B)],
+                        gradient: LinearGradient(
+                          colors: [ourShelfAccent, const Color(0xFFF2CC6B)],
                         ),
                         shape: BoxShape.circle,
                         boxShadow: [

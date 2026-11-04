@@ -12,6 +12,8 @@ import '../dashboard/dashboard_screen.dart';
 import '../expenses/expenses_screen.dart';
 import '../groups/group_sheet.dart';
 import '../reminders/reminders_screen.dart';
+import '../../theme/theme_controller.dart';
+import 'about_screen.dart';
 import 'how_it_works_screen.dart';
 
 /// Everything that doesn't get its own bottom-nav tab: expenses, activity,
@@ -28,7 +30,7 @@ class MoreScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('More'),
-        flexibleSpace: const DecoratedBox(
+        flexibleSpace: DecoratedBox(
           decoration: BoxDecoration(gradient: royalHeaderGradient),
         ),
       ),
@@ -185,6 +187,15 @@ class MoreScreen extends ConsumerWidget {
                 subtitle: 'FAQs and contact',
                 onTap: () => _showHelp(context),
               ),
+              _MoreTile(
+                icon: Icons.info_outline,
+                color: ourShelfTextSecondary,
+                title: 'About',
+                subtitle: 'Developer & what\'s new',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const AboutScreen()),
+                ),
+              ),
             ],
           ),
         ],
@@ -254,7 +265,7 @@ class _Section extends StatelessWidget {
         ),
         Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: ourShelfCard,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: ourShelfBorder),
           ),
@@ -316,7 +327,7 @@ class _SettingsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Settings'),
-        flexibleSpace: const DecoratedBox(
+        flexibleSpace: DecoratedBox(
           decoration: BoxDecoration(gradient: royalHeaderGradient),
         ),
       ),
@@ -328,6 +339,46 @@ class _SettingsScreen extends ConsumerWidget {
               leading: const Icon(Icons.person_outline),
               title: Text(user?.displayName ?? user?.phoneNumber ?? 'Account'),
               subtitle: Text(user?.email ?? user?.phoneNumber ?? ''),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 8),
+            child: Text(
+              'APPEARANCE',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.8,
+                color: ourShelfTextSecondary,
+              ),
+            ),
+          ),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: SegmentedButton<ThemeMode>(
+                segments: const [
+                  ButtonSegment(
+                    value: ThemeMode.light,
+                    label: Text('Light'),
+                    icon: Icon(Icons.light_mode_outlined),
+                  ),
+                  ButtonSegment(
+                    value: ThemeMode.dark,
+                    label: Text('Dark'),
+                    icon: Icon(Icons.dark_mode_outlined),
+                  ),
+                  ButtonSegment(
+                    value: ThemeMode.system,
+                    label: Text('System'),
+                    icon: Icon(Icons.brightness_auto_outlined),
+                  ),
+                ],
+                selected: {ref.watch(themeModeProvider)},
+                onSelectionChanged: (selected) =>
+                    ref.read(themeModeProvider.notifier).setMode(selected.first),
+              ),
             ),
           ),
           const SizedBox(height: 16),

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app.dart';
 import '../../data/category_style.dart';
+import '../../data/group.dart';
 import '../../data/providers.dart';
 import '../../data/shopping_item.dart';
 import '../../widgets/motion.dart';
@@ -19,16 +20,17 @@ class DashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final itemsAsync = ref.watch(shoppingItemsProvider(groupId));
+    final group = ref.watch(groupStreamProvider(groupId)).value;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Dashboard'),
-        flexibleSpace: const DecoratedBox(
+        flexibleSpace: DecoratedBox(
           decoration: BoxDecoration(gradient: royalHeaderGradient),
         ),
       ),
       body: itemsAsync.when(
-        data: (items) => _DashboardBody(items: items),
+        data: (items) => _DashboardBody(items: items, members: group?.members ?? const []),
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Could not load the dashboard: $e')),
       ),
@@ -37,9 +39,10 @@ class DashboardScreen extends ConsumerWidget {
 }
 
 class _DashboardBody extends StatefulWidget {
-  const _DashboardBody({required this.items});
+  const _DashboardBody({required this.items, required this.members});
 
   final List<ShoppingItem> items;
+  final List<GroupMember> members;
 
   @override
   State<_DashboardBody> createState() => _DashboardBodyState();
@@ -47,23 +50,74 @@ class _DashboardBody extends StatefulWidget {
 
 class _DashboardBodyState extends State<_DashboardBody> {
   int? _touchedIndex;
+  // null = "All" members.
+  String? _selectedPayer;
 
   @override
   Widget build(BuildContext context) {
-    final paid = widget.items
+    final allPaid = widget.items
         .where((i) => i.status == ItemStatus.bought && i.price != null)
         .toList();
 
+    // Every group member, plus any past payer not currently a member (so a
+    // removed/renamed member's old purchases are still filterable) — shown
+    // whenever there's more than one person to choose between, even if only
+    // one of them has actually paid for anything yet.
+    final payers = <String>{
+      for (final m in widget.members) m.displayName,
+      for (final item in allPaid) item.paidByName ?? item.addedByName,
+    }.toList()..sort();
+
+    final paid = _selectedPayer == null
+        ? allPaid
+        : allPaid.where((i) => (i.paidByName ?? i.addedByName) == _selectedPayer).toList();
+
+    final filterBar = payers.length > 1
+        ? Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: SizedBox(
+              height: 36,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  _PayerChip(
+                    label: 'All',
+                    selected: _selectedPayer == null,
+                    onTap: () => setState(() => _selectedPayer = null),
+                  ),
+                  for (final payer in payers) ...[
+                    const SizedBox(width: 8),
+                    _PayerChip(
+                      label: payer,
+                      selected: _selectedPayer == payer,
+                      onTap: () => setState(() => _selectedPayer = payer),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          )
+        : null;
+
     if (paid.isEmpty) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Text(
-            'No priced purchases yet. Mark items bought with a price to '
-            'see your spending breakdown here.',
-            textAlign: TextAlign.center,
+      return Column(
+        children: [
+          if (filterBar != null) Padding(padding: const EdgeInsets.fromLTRB(16, 16, 16, 0), child: filterBar),
+          Expanded(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  _selectedPayer == null
+                      ? 'No priced purchases yet. Mark items bought with a price to '
+                          'see your spending breakdown here.'
+                      : '$_selectedPayer hasn\'t paid for anything yet.',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
           ),
-        ),
+        ],
       );
     }
 
@@ -94,6 +148,7 @@ class _DashboardBodyState extends State<_DashboardBody> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        ?filterBar,
         Row(
           children: [
             Expanded(
@@ -151,7 +206,7 @@ class _DashboardBodyState extends State<_DashboardBody> {
           child: Container(
             padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: ourShelfCard,
               borderRadius: BorderRadius.circular(22),
               boxShadow: [
                 BoxShadow(
@@ -231,10 +286,10 @@ class _DashboardBodyState extends State<_DashboardBody> {
                                       _touchedIndex! < entries.length
                                   ? '₹${entries[_touchedIndex!].value.toStringAsFixed(0)}'
                                   : '₹${total.toStringAsFixed(0)}',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF4A148C),
+                                color: ourShelfSeed,
                               ),
                             ),
                             Text(
@@ -244,7 +299,7 @@ class _DashboardBodyState extends State<_DashboardBody> {
                                   : 'Total',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.grey.shade600,
+                                color: ourShelfTextSecondary,
                               ),
                               textAlign: TextAlign.center,
                             ),
@@ -290,7 +345,7 @@ class _DashboardBodyState extends State<_DashboardBody> {
                       Icon(
                         iconForCategory(entry.key),
                         size: 16,
-                        color: Colors.grey.shade600,
+                        color: ourShelfTextSecondary,
                       ),
                       const SizedBox(width: 6),
                       Expanded(
@@ -309,7 +364,7 @@ class _DashboardBodyState extends State<_DashboardBody> {
                         child: Text(
                           '${percent.toStringAsFixed(0)}%',
                           textAlign: TextAlign.right,
-                          style: TextStyle(color: Colors.grey.shade600),
+                          style: TextStyle(color: ourShelfTextSecondary),
                         ),
                       ),
                     ],
@@ -335,6 +390,45 @@ class _DashboardBodyState extends State<_DashboardBody> {
           );
         }),
       ],
+    );
+  }
+}
+
+/// One "All" / member-name pill in the Dashboard's payer filter bar.
+class _PayerChip extends StatelessWidget {
+  const _PayerChip({required this.label, required this.selected, required this.onTap});
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? const Color(0xFF4A148C) : ourShelfCard,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: selected ? Colors.transparent : ourShelfBorder,
+            ),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: selected ? Colors.white : ourShelfTextSecondary,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

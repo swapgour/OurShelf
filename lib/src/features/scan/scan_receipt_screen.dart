@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image_picker/image_picker.dart';
@@ -147,19 +148,28 @@ class _ScanReceiptScreenState extends ConsumerState<ScanReceiptScreen> {
     setState(() => _saving = true);
 
     final paidByName = user.displayName ?? user.phoneNumber ?? 'Me';
-    await commitPurchaseMatches(
-      shoppingRepo: ref.read(shoppingListRepositoryProvider),
-      activityRepo: ref.read(activityRepositoryProvider),
-      pantryRepo: ref.read(pantryRepositoryProvider),
-      groupId: widget.groupId,
-      matches: _matches,
-      selected: _selected,
-      prices: _prices,
-      uid: user.uid,
-      paidByName: paidByName,
-      activitySummary: (n) => 'Added $n item${n == 1 ? '' : 's'} from a scanned list',
-    );
-    if (mounted) Navigator.of(context).pop();
+    try {
+      await commitPurchaseMatches(
+        shoppingRepo: ref.read(shoppingListRepositoryProvider),
+        activityRepo: ref.read(activityRepositoryProvider),
+        pantryRepo: ref.read(pantryRepositoryProvider),
+        groupId: widget.groupId,
+        matches: _matches,
+        selected: _selected,
+        prices: _prices,
+        uid: user.uid,
+        paidByName: paidByName,
+        activitySummary: (n) => 'Added $n item${n == 1 ? '' : 's'} from a scanned list',
+      );
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not save: $e')),
+        );
+      }
+    }
   }
 
   @override
@@ -167,7 +177,7 @@ class _ScanReceiptScreenState extends ConsumerState<ScanReceiptScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Scan purchased list'),
-        flexibleSpace: const DecoratedBox(
+        flexibleSpace: DecoratedBox(
           decoration: BoxDecoration(gradient: royalHeaderGradient),
         ),
       ),
@@ -465,10 +475,12 @@ class _ReviewBody extends StatelessWidget {
                         ),
                         const Spacer(),
                         SizedBox(
-                          width: 46,
+                          width: 54,
                           child: TextFormField(
                             initialValue: match.line.quantity ?? '1',
+                            textAlign: TextAlign.center,
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
                             style: const TextStyle(fontSize: 13),
                             decoration: const InputDecoration(
                               isDense: true,
@@ -483,7 +495,9 @@ class _ReviewBody extends StatelessWidget {
                           width: 90,
                           child: TextFormField(
                             initialValue: prices[i]?.toStringAsFixed(0) ?? '',
+                            textAlign: TextAlign.center,
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
                             style: const TextStyle(fontSize: 13),
                             decoration: const InputDecoration(
                               isDense: true,

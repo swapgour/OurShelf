@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
@@ -8,6 +9,7 @@ import '../../data/catalogue.dart';
 import '../../data/category_style.dart';
 import '../../data/group.dart';
 import '../../data/providers.dart';
+import '../../data/receipt_parser.dart';
 import '../../data/shopping_item.dart';
 import '../../data/templates.dart';
 import '../../data/user_profile.dart';
@@ -61,7 +63,7 @@ class _HomeContent extends ConsumerWidget {
       extendBodyBehindAppBar: false,
       appBar: AppBar(
         title: Text(group?.name ?? 'OurShelf'),
-        flexibleSpace: const DecoratedBox(
+        flexibleSpace: DecoratedBox(
           decoration: BoxDecoration(gradient: royalHeaderGradient),
         ),
         actions: [
@@ -519,12 +521,20 @@ class _ItemTile extends ConsumerWidget {
     final currentUserName =
         currentUser?.displayName ?? currentUser?.phoneNumber ?? 'Someone';
     if (value != true) {
-      await repo.markToBuy(groupId: groupId, itemId: item.id);
-      await ref.read(activityRepositoryProvider).log(
-        groupId: groupId,
-        actorName: currentUserName,
-        summary: 'Moved ${item.name} back to the list',
-      );
+      try {
+        await repo.markToBuy(groupId: groupId, itemId: item.id);
+        await ref.read(activityRepositoryProvider).log(
+          groupId: groupId,
+          actorName: currentUserName,
+          summary: 'Moved ${item.name} back to the list',
+        );
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Could not update: $e')));
+        }
+      }
       return;
     }
     final group = ref.read(groupStreamProvider(groupId)).value;
@@ -538,27 +548,35 @@ class _ItemTile extends ConsumerWidget {
       ),
     );
     if (result == null) return; // cancelled
-    await repo.markBought(
-      groupId: groupId,
-      itemId: item.id,
-      boughtByUid: currentUser!.uid,
-      itemName: item.name,
-      price: result.price,
-      paidByName: result.paidByName,
-    );
-    await ref
-        .read(pantryRepositoryProvider)
-        .topUpFromPurchase(
-          groupId: groupId,
-          name: item.name,
-          category: item.category,
-          unit: item.unit,
-        );
-    await ref.read(activityRepositoryProvider).log(
-      groupId: groupId,
-      actorName: result.paidByName ?? currentUserName,
-      summary: 'Bought ${item.name}',
-    );
+    try {
+      await repo.markBought(
+        groupId: groupId,
+        itemId: item.id,
+        boughtByUid: currentUser!.uid,
+        itemName: item.name,
+        price: result.price,
+        paidByName: result.paidByName,
+      );
+      await ref
+          .read(pantryRepositoryProvider)
+          .topUpFromPurchase(
+            groupId: groupId,
+            name: item.name,
+            category: item.category,
+            unit: item.unit,
+          );
+      await ref.read(activityRepositoryProvider).log(
+        groupId: groupId,
+        actorName: result.paidByName ?? currentUserName,
+        summary: 'Bought ${item.name}',
+      );
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Could not mark bought: $e')));
+      }
+    }
   }
 
   Future<void> _onTapEdit(BuildContext context, WidgetRef ref) async {
@@ -657,7 +675,7 @@ class _ItemTile extends ConsumerWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
         decoration: BoxDecoration(
-          color: bought ? Colors.grey.shade100 : Colors.white,
+          color: bought ? ourShelfBorder.withValues(alpha: 0.4) : ourShelfCard,
           borderRadius: BorderRadius.circular(16),
           border: Border(left: BorderSide(color: accent, width: 4)),
           boxShadow: bought
@@ -923,6 +941,7 @@ class _MarkBoughtDialogState extends State<_MarkBoughtDialog> {
             keyboardType: const TextInputType.numberWithOptions(
               decimal: true,
             ),
+            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
             decoration: const InputDecoration(
               labelText: 'Price (optional)',
               prefixText: '₹ ',
@@ -987,6 +1006,8 @@ class _EditQuantityDialogState extends State<_EditQuantityDialog> {
           Expanded(
             child: TextField(
               controller: _qtyController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
               decoration: const InputDecoration(labelText: 'Quantity'),
             ),
           ),
@@ -1273,9 +1294,12 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
                     ),
                     const SizedBox(width: 8),
                     SizedBox(
-                      width: 64,
+                      width: 70,
                       child: TextField(
                         controller: _qtyController,
+                        textAlign: TextAlign.center,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
                         decoration: const InputDecoration(
                           hintText: 'Qty',
                           border: OutlineInputBorder(),
@@ -1305,18 +1329,30 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
                 child: ListView(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  children: starterTemplates
-                      .map(
-                        (t) => Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: ActionChip(
-                            avatar: const Icon(Icons.auto_awesome, size: 16),
-                            label: Text(t.name),
-                            onPressed: () => _loadTemplate(t),
-                          ),
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ActionChip(
+                        avatar: const Icon(Icons.content_paste, size: 16),
+                        label: const Text('Paste a list'),
+                        onPressed: () => showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          builder: (_) => _PasteListSheet(groupId: widget.groupId),
                         ),
-                      )
-                      .toList(),
+                      ),
+                    ),
+                    ...starterTemplates.map(
+                      (t) => Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: ActionChip(
+                          avatar: const Icon(Icons.auto_awesome, size: 16),
+                          label: Text(t.name),
+                          onPressed: () => _loadTemplate(t),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 8),
@@ -1403,6 +1439,282 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
                   }).toList(),
                 ),
               ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _PastedDraft {
+  _PastedDraft({
+    required this.name,
+    required this.category,
+    required this.unit,
+    required String quantity,
+  }) : quantityController = TextEditingController(text: quantity);
+
+  final String name;
+  final String category;
+  final String unit;
+  final TextEditingController quantityController;
+}
+
+/// Lets the user paste or type a free-form list (e.g. copied from a text
+/// message) and adds the recognised items straight to "to buy" with a
+/// best-guess category and quantity, after a quick review.
+class _PasteListSheet extends ConsumerStatefulWidget {
+  const _PasteListSheet({required this.groupId});
+
+  final String groupId;
+
+  @override
+  ConsumerState<_PasteListSheet> createState() => _PasteListSheetState();
+}
+
+class _PasteListSheetState extends ConsumerState<_PasteListSheet> {
+  final _textController = TextEditingController();
+  List<_PastedDraft>? _drafts;
+  late List<bool> _selected;
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    for (final d in _drafts ?? const <_PastedDraft>[]) {
+      d.quantityController.dispose();
+    }
+    super.dispose();
+  }
+
+  void _parse() {
+    final text = _textController.text;
+    if (text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Type or paste a list first')),
+      );
+      return;
+    }
+    final parsed = parsePastedList(text);
+    if (parsed.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Couldn't find any items in that text")),
+      );
+      return;
+    }
+    setState(() {
+      _drafts = parsed
+          .map(
+            (l) => _PastedDraft(
+              name: l.name,
+              category: l.category,
+              unit: l.unit,
+              quantity: l.quantity,
+            ),
+          )
+          .toList();
+      _selected = List.filled(parsed.length, true);
+    });
+  }
+
+  Future<void> _confirm() async {
+    final drafts = _drafts!;
+    final chosen = <({String name, String category, String quantity, String unit})>[
+      for (var i = 0; i < drafts.length; i++)
+        if (_selected[i])
+          (
+            name: drafts[i].name,
+            category: drafts[i].category,
+            quantity: drafts[i].quantityController.text.trim().isEmpty
+                ? '1'
+                : drafts[i].quantityController.text.trim(),
+            unit: drafts[i].unit,
+          ),
+    ];
+    if (chosen.isEmpty) return;
+
+    final user = ref.read(authStateProvider).value;
+    if (user == null) return;
+    setState(() => _saving = true);
+    try {
+      final profile = await ref.read(userRepositoryProvider).watchProfile(user.uid).first;
+      final addedByName =
+          profile?.displayName ?? user.displayName ?? user.phoneNumber ?? 'Member';
+      await ref.read(shoppingListRepositoryProvider).addItemsBatch(
+        groupId: widget.groupId,
+        items: chosen,
+        addedByUid: user.uid,
+        addedByName: addedByName,
+      );
+      await ref.read(activityRepositoryProvider).log(
+        groupId: widget.groupId,
+        actorName: addedByName,
+        summary:
+            'Added ${chosen.length} item${chosen.length == 1 ? '' : 's'} from a pasted list',
+      );
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not add items: $e')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final drafts = _drafts;
+    final selectedCount = drafts == null ? 0 : _selected.where((s) => s).length;
+    return DraggableScrollableSheet(
+      initialChildSize: 0.75,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (context, scrollController) {
+        return Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Paste a list',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+              ),
+              if (drafts == null) ...[
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: TextField(
+                    controller: _textController,
+                    minLines: 6,
+                    maxLines: 10,
+                    autofocus: true,
+                    decoration: const InputDecoration(
+                      hintText: 'e.g.\nOnion 2kg\nMilk\nEggs 1 dozen, bread',
+                      border: OutlineInputBorder(),
+                      alignLabelWithHint: true,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    "One item per line, or separated by commas. If you don't "
+                    "give a quantity we'll default it sensibly (kg, packet, "
+                    "litre…) based on the item.",
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: _parse,
+                      child: const Text('Find items'),
+                    ),
+                  ),
+                ),
+              ] else ...[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Found ${drafts.length} item${drafts.length == 1 ? '' : 's'} — review before adding',
+                      style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    controller: scrollController,
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+                    itemCount: drafts.length,
+                    itemBuilder: (context, i) {
+                      final draft = drafts[i];
+                      final color = colorForCategory(draft.category);
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        child: CheckboxListTile(
+                          value: _selected[i],
+                          onChanged: (v) => setState(() => _selected[i] = v ?? false),
+                          controlAffinity: ListTileControlAffinity.leading,
+                          secondary: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: color.withValues(alpha: 0.14),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(iconForCategory(draft.category), color: color, size: 20),
+                          ),
+                          title: Text(
+                            draft.name,
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          subtitle: Row(
+                            children: [
+                              Expanded(
+                                child: Text(draft.category, style: const TextStyle(fontSize: 12)),
+                              ),
+                              SizedBox(
+                                width: 54,
+                                child: TextFormField(
+                                  controller: draft.quantityController,
+                                  textAlign: TextAlign.center,
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                                  ],
+                                  style: const TextStyle(fontSize: 13),
+                                  decoration: const InputDecoration(isDense: true, border: UnderlineInputBorder()),
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(draft.unit, style: const TextStyle(fontSize: 12)),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                SafeArea(
+                  minimum: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: _saving ? null : () => setState(() => _drafts = null),
+                          child: const Text('Back'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: selectedCount == 0 || _saving ? null : _confirm,
+                          child: _saving
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                )
+                              : Text('Add $selectedCount item${selectedCount == 1 ? '' : 's'}'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
         );

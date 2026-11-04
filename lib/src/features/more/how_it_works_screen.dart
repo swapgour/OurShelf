@@ -87,7 +87,7 @@ class HowItWorksScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('How OurShelf Works'),
-        flexibleSpace: const DecoratedBox(
+        flexibleSpace: DecoratedBox(
           decoration: BoxDecoration(gradient: royalHeaderGradient),
         ),
       ),
@@ -139,7 +139,7 @@ class _SectionHeading extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       title,
-      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: ourShelfTextPrimary),
+      style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: ourShelfTextPrimary),
     );
   }
 }
@@ -217,7 +217,7 @@ class _FlowStepTile extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: ourShelfCard,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: ourShelfBorder),
                 ),
@@ -272,7 +272,7 @@ class _ExamplePrompt extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.chat_bubble_outline, size: 16, color: ourShelfSeed),
+          Icon(Icons.chat_bubble_outline, size: 16, color: ourShelfSeed),
           const SizedBox(width: 10),
           Expanded(
             child: Text('"$text"', style: const TextStyle(fontStyle: FontStyle.italic, fontSize: 13)),
@@ -294,7 +294,7 @@ class _AskAiSection extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ourShelfCard,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: ourShelfBorder),
       ),
@@ -309,7 +309,7 @@ class _AskAiSection extends StatelessWidget {
                   color: ourShelfAccent.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.auto_awesome_outlined, color: ourShelfAccent, size: 20),
+                child: Icon(Icons.auto_awesome_outlined, color: ourShelfAccent, size: 20),
               ),
               const SizedBox(width: 10),
               const Expanded(
@@ -321,7 +321,7 @@ class _AskAiSection extends StatelessWidget {
                   color: ourShelfSuccess.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Text(
+                child: Text(
                   'Live',
                   style: TextStyle(color: ourShelfSuccess, fontWeight: FontWeight.bold, fontSize: 11),
                 ),
@@ -329,7 +329,7 @@ class _AskAiSection extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          const Text(
+          Text(
             'Ask AI is a chat box (More → Ask AI) that answers questions '
             'about your own group\'s data — your shopping list, pantry and '
             'purchase history — instead of you digging through screens for it. '
@@ -345,7 +345,7 @@ class _AskAiSection extends StatelessWidget {
           const _ExamplePrompt(text: 'What\'s still on the shopping list?'),
           const _ExamplePrompt(text: 'Who paid the most this month?'),
           const SizedBox(height: 14),
-          const Divider(height: 1, color: ourShelfBorder),
+          Divider(height: 1, color: ourShelfBorder),
           const SizedBox(height: 14),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app.dart';
@@ -96,7 +97,7 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Log a Bill'),
-        flexibleSpace: const DecoratedBox(
+        flexibleSpace: DecoratedBox(
           decoration: BoxDecoration(gradient: royalHeaderGradient),
         ),
       ),
@@ -116,7 +117,7 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
                 avatar: Icon(iconForCategory(category), size: 17, color: selected ? Colors.white : color),
                 selected: selected,
                 selectedColor: ourShelfSeed,
-                backgroundColor: Colors.white,
+                backgroundColor: ourShelfCard,
                 labelStyle: TextStyle(
                   color: selected ? Colors.white : ourShelfTextPrimary,
                   fontWeight: FontWeight.w600,
@@ -130,6 +131,7 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
           TextField(
             controller: _amountController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
             decoration: const InputDecoration(labelText: 'Amount', prefixText: '₹ '),
           ),
           const SizedBox(height: 12),
@@ -142,12 +144,12 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
           ),
           const SizedBox(height: 12),
           ListTile(
-            tileColor: Colors.white,
+            tileColor: ourShelfCard,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(15),
-              side: const BorderSide(color: ourShelfBorder),
+              side: BorderSide(color: ourShelfBorder),
             ),
-            leading: const Icon(Icons.calendar_month_outlined, color: ourShelfSeed),
+            leading: Icon(Icons.calendar_month_outlined, color: ourShelfSeed),
             title: const Text('Date'),
             trailing: Text(
               '${_date.day}/${_date.month}/${_date.year}',

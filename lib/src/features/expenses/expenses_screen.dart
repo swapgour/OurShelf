@@ -22,7 +22,7 @@ class ExpensesScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Expenses'),
-        flexibleSpace: const DecoratedBox(
+        flexibleSpace: DecoratedBox(
           decoration: BoxDecoration(gradient: royalHeaderGradient),
         ),
       ),
@@ -146,7 +146,7 @@ class _ExpensesBody extends StatelessWidget {
               margin: const EdgeInsets.only(bottom: 10),
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: ourShelfCard,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: ourShelfBorder),
               ),
@@ -156,7 +156,7 @@ class _ExpensesBody extends StatelessWidget {
                     backgroundColor: ourShelfSeed.withValues(alpha: 0.1),
                     child: Text(
                       name.isNotEmpty ? name[0].toUpperCase() : '?',
-                      style: const TextStyle(fontWeight: FontWeight.bold, color: ourShelfSeed),
+                      style: TextStyle(fontWeight: FontWeight.bold, color: ourShelfSeed),
                     ),
                   ),
                   const SizedBox(width: 12),

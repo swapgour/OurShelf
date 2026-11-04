@@ -191,6 +191,7 @@ class ShoppingListRepository {
     required String itemName,
     double? price,
     String? paidByName,
+    String? quantity,
   }) async {
     final data = <String, dynamic>{
       'status': 'bought',
@@ -199,6 +200,7 @@ class ShoppingListRepository {
     };
     if (price != null) data['price'] = price;
     if (paidByName != null) data['paidByName'] = paidByName;
+    if (quantity != null) data['quantity'] = quantity;
     await _items(groupId).doc(itemId).update(data);
     _push.notifyGroup(
       groupId: groupId,

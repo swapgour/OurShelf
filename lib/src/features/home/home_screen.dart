@@ -77,9 +77,9 @@ class HomeScreen extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
               child: Row(
                 children: [
-                  const Icon(Icons.shopping_basket, color: ourShelfSeed, size: 26),
+                  Icon(Icons.shopping_basket, color: ourShelfSeed, size: 26),
                   const SizedBox(width: 8),
-                  const Text(
+                  Text(
                     'OurShelf',
                     style: TextStyle(
                       fontSize: 20,
@@ -119,7 +119,7 @@ class HomeScreen extends ConsumerWidget {
                                       child: Text(
                                         '${_greeting()}, $name',
                                         overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 19,
                                           fontWeight: FontWeight.bold,
                                           color: ourShelfTextPrimary,
@@ -135,7 +135,7 @@ class HomeScreen extends ConsumerWidget {
                                 const SizedBox(height: 2),
                                 Text(
                                   group?.name ?? 'Your group',
-                                  style: const TextStyle(color: ourShelfTextSecondary),
+                                  style: TextStyle(color: ourShelfTextSecondary),
                                 ),
                               ],
                             ),
@@ -143,7 +143,7 @@ class HomeScreen extends ConsumerWidget {
                           Container(
                             padding: const EdgeInsets.all(2),
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: ourShelfCard,
                               shape: BoxShape.circle,
                               border: Border.all(color: ourShelfBorder),
                             ),
@@ -154,7 +154,7 @@ class HomeScreen extends ConsumerWidget {
                                   ? NetworkImage(user!.photoURL!)
                                   : null,
                               child: user?.photoURL == null
-                                  ? const Icon(Icons.person, color: ourShelfSeed)
+                                  ? Icon(Icons.person, color: ourShelfSeed)
                                   : null,
                             ),
                           ),
@@ -272,7 +272,7 @@ class HomeScreen extends ConsumerWidget {
                   FadeSlideIn(
                     delay: const Duration(milliseconds: 160),
                     child: Material(
-                      color: Colors.white,
+                      color: ourShelfCard,
                       borderRadius: BorderRadius.circular(14),
                       child: InkWell(
                         borderRadius: BorderRadius.circular(14),
@@ -287,7 +287,7 @@ class HomeScreen extends ConsumerWidget {
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.pie_chart_outline, color: ourShelfSeed, size: 20),
+                              Icon(Icons.pie_chart_outline, color: ourShelfSeed, size: 20),
                               const SizedBox(width: 10),
                               const Expanded(
                                 child: Text(
@@ -370,12 +370,12 @@ class HomeScreen extends ConsumerWidget {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(Icons.lightbulb_outline, color: ourShelfAccent),
+                            Icon(Icons.lightbulb_outline, color: ourShelfAccent),
                             const SizedBox(width: 10),
                             Expanded(
                               child: RichText(
                                 text: TextSpan(
-                                  style: const TextStyle(color: ourShelfTextPrimary, height: 1.3),
+                                  style: TextStyle(color: ourShelfTextPrimary, height: 1.3),
                                   children: [
                                     const TextSpan(
                                       text: 'OurShelf suggests: ',
@@ -426,8 +426,8 @@ class HomeScreen extends ConsumerWidget {
                         children: entries.take(3).map((e) {
                           return ListTile(
                             contentPadding: EdgeInsets.zero,
-                            leading: const CircleAvatar(
-                              backgroundColor: Color(0x1A54277D),
+                            leading: CircleAvatar(
+                              backgroundColor: const Color(0x1A54277D),
                               child: Icon(Icons.history, color: ourShelfSeed, size: 18),
                             ),
                             title: Text(e.summary),
@@ -484,7 +484,7 @@ class _SummaryCard extends StatelessWidget {
     return FadeSlideIn(
       delay: Duration(milliseconds: 140 + delay),
       child: Material(
-        color: Colors.white,
+        color: ourShelfCard,
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
@@ -514,7 +514,7 @@ class _SummaryCard extends StatelessWidget {
                       CountUpText(
                         value: value,
                         prefix: prefix,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 17,
                           color: ourShelfTextPrimary,

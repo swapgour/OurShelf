@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:markdown/markdown.dart' as md;
 
 import '../../ai/ask_ai_client.dart';
 import '../../app.dart';
@@ -104,7 +106,7 @@ class _AskAiScreenState extends State<AskAiScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Ask AI'),
-        flexibleSpace: const DecoratedBox(
+        flexibleSpace: DecoratedBox(
           decoration: BoxDecoration(gradient: royalHeaderGradient),
         ),
       ),
@@ -115,8 +117,8 @@ class _AskAiScreenState extends State<AskAiScreen> {
           ),
           if (_messages.isEmpty) _buildPrompts(),
           if (_sending)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -125,7 +127,7 @@ class _AskAiScreenState extends State<AskAiScreen> {
                     height: 14,
                     child: CircularProgressIndicator(strokeWidth: 2, color: ourShelfSeed),
                   ),
-                  SizedBox(width: 10),
+                  const SizedBox(width: 10),
                   Text('Thinking…', style: TextStyle(color: ourShelfTextSecondary, fontSize: 12.5)),
                 ],
               ),
@@ -142,7 +144,7 @@ class _AskAiScreenState extends State<AskAiScreen> {
                     decoration: InputDecoration(
                       hintText: 'Ask about your list, pantry or spending…',
                       filled: true,
-                      fillColor: Colors.white,
+                      fillColor: ourShelfCard,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(24),
@@ -197,12 +199,14 @@ class _AskAiScreenState extends State<AskAiScreen> {
             child: Container(
               margin: const EdgeInsets.only(bottom: 10),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width * (isUser ? 0.78 : 0.92),
+              ),
               decoration: BoxDecoration(
                 gradient: isUser ? royalHeaderGradient : null,
                 color: isUser
                     ? null
-                    : (msg.isError ? ourShelfError.withValues(alpha: 0.08) : Colors.white),
+                    : (msg.isError ? ourShelfError.withValues(alpha: 0.08) : ourShelfCard),
                 borderRadius: BorderRadius.circular(16).copyWith(
                   bottomRight: isUser ? const Radius.circular(4) : null,
                   bottomLeft: !isUser ? const Radius.circular(4) : null,
@@ -215,14 +219,39 @@ class _AskAiScreenState extends State<AskAiScreen> {
                             : ourShelfBorder,
                       ),
               ),
-              child: Text(
-                msg.text,
-                style: TextStyle(
-                  color: isUser ? Colors.white : (msg.isError ? ourShelfError : ourShelfTextPrimary),
-                  fontSize: 13.5,
-                  height: 1.4,
-                ),
-              ),
+              child: isUser || msg.isError
+                  ? Text(
+                      msg.text,
+                      style: TextStyle(
+                        color: isUser ? Colors.white : ourShelfError,
+                        fontSize: 13.5,
+                        height: 1.4,
+                      ),
+                    )
+                  : MarkdownBody(
+                      data: msg.text,
+                      selectable: true,
+                      extensionSet: md.ExtensionSet.gitHubWeb,
+                      styleSheet: MarkdownStyleSheet(
+                        p: TextStyle(color: ourShelfTextPrimary, fontSize: 13.5, height: 1.4),
+                        strong: const TextStyle(fontWeight: FontWeight.bold),
+                        em: const TextStyle(fontStyle: FontStyle.italic),
+                        listBullet: TextStyle(color: ourShelfTextPrimary, fontSize: 13.5),
+                        h1: TextStyle(color: ourShelfTextPrimary, fontSize: 17, fontWeight: FontWeight.bold),
+                        h2: TextStyle(color: ourShelfTextPrimary, fontSize: 15.5, fontWeight: FontWeight.bold),
+                        h3: TextStyle(color: ourShelfTextPrimary, fontSize: 14.5, fontWeight: FontWeight.bold),
+                        code: TextStyle(
+                          color: ourShelfTextPrimary,
+                          backgroundColor: ourShelfBorder.withValues(alpha: 0.4),
+                          fontSize: 12.5,
+                        ),
+                        tableHead: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
+                        tableBody: TextStyle(color: ourShelfTextPrimary, fontSize: 12.5),
+                        tableBorder: TableBorder.all(color: ourShelfBorder),
+                        tableCellsPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                        tableColumnWidth: const FlexColumnWidth(),
+                      ),
+                    ),
             ),
           ),
         );
@@ -249,7 +278,7 @@ class _EmptyState extends StatelessWidget {
                   color: ourShelfAccent.withValues(alpha: 0.14),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.auto_awesome, size: 40, color: ourShelfAccent),
+                child: Icon(Icons.auto_awesome, size: 40, color: ourShelfAccent),
               ),
             ),
             const SizedBox(height: 18),

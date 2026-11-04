@@ -140,9 +140,9 @@ class _SignInScreenState extends ConsumerState<SignInScreen>
     return Scaffold(
       body: Stack(
         children: [
-          const DecoratedBox(
+          DecoratedBox(
             decoration: BoxDecoration(gradient: royalGradient),
-            child: SizedBox.expand(),
+            child: const SizedBox.expand(),
           ),
           Positioned(
             top: -60,
@@ -167,24 +167,46 @@ class _SignInScreenState extends ConsumerState<SignInScreen>
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.2),
-                                  blurRadius: 24,
-                                  spreadRadius: 1,
+                          Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.2),
+                                      blurRadius: 24,
+                                      spreadRadius: 1,
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                            child: const Icon(
-                              Icons.shopping_basket,
-                              size: 52,
-                              color: Color(0xFF4A148C),
-                            ),
+                                child: ShaderMask(
+                                  blendMode: BlendMode.srcIn,
+                                  shaderCallback: (bounds) => royalGradient.createShader(bounds),
+                                  child: const Icon(Icons.shelves, size: 52),
+                                ),
+                              ),
+                              Positioned(
+                                right: -2,
+                                bottom: -2,
+                                child: Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: ourShelfAccent,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: Colors.white, width: 2),
+                                  ),
+                                  child: const Icon(
+                                    Icons.auto_awesome,
+                                    size: 12,
+                                    color: Color(0xFF4A148C),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 16),
                           const Text(

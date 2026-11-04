@@ -45,6 +45,7 @@ Future<int> commitPurchaseMatches({
         itemName: name,
         price: price,
         paidByName: paidByName,
+        quantity: match.line.quantity,
       );
     } else {
       name = match.line.name;

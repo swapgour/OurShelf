@@ -96,6 +96,11 @@ class _GroupSheetState extends ConsumerState<GroupSheet> {
           actorName: displayName,
           summary: '$displayName joined the group',
         );
+        // The join itself succeeds in Firestore regardless, but without
+        // this the app keeps showing whatever group it was already on
+        // (e.g. the personal group auto-created at first sign-in) instead
+        // of switching to the one just joined.
+        ref.invalidate(activeGroupIdProvider);
       }
       if (mounted) Navigator.of(context).pop();
     } catch (e) {

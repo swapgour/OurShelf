@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app.dart';
@@ -81,20 +82,29 @@ class _AddPurchaseScreenState extends ConsumerState<AddPurchaseScreen> {
     final currentItems = ref.read(shoppingItemsProvider(widget.groupId)).value ?? [];
     final matches = matchScannedLines(lines: parsedLines, currentItems: currentItems);
 
-    await commitPurchaseMatches(
-      shoppingRepo: ref.read(shoppingListRepositoryProvider),
-      activityRepo: ref.read(activityRepositoryProvider),
-      pantryRepo: ref.read(pantryRepositoryProvider),
-      groupId: widget.groupId,
-      matches: matches,
-      selected: List.filled(matches.length, true),
-      prices: matches.map((m) => m.line.price).toList(),
-      uid: user.uid,
-      paidByName: paidByName,
-      activitySummary: (n) => 'Logged a purchase of $n item${n == 1 ? '' : 's'}',
-      boughtAt: _purchaseDate,
-    );
-    if (mounted) Navigator.of(context).pop();
+    try {
+      await commitPurchaseMatches(
+        shoppingRepo: ref.read(shoppingListRepositoryProvider),
+        activityRepo: ref.read(activityRepositoryProvider),
+        pantryRepo: ref.read(pantryRepositoryProvider),
+        groupId: widget.groupId,
+        matches: matches,
+        selected: List.filled(matches.length, true),
+        prices: matches.map((m) => m.line.price).toList(),
+        uid: user.uid,
+        paidByName: paidByName,
+        activitySummary: (n) => 'Logged a purchase of $n item${n == 1 ? '' : 's'}',
+        boughtAt: _purchaseDate,
+      );
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not save the purchase: $e')),
+        );
+      }
+    }
   }
 
   @override
@@ -107,7 +117,7 @@ class _AddPurchaseScreenState extends ConsumerState<AddPurchaseScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Add Purchase'),
-        flexibleSpace: const DecoratedBox(
+        flexibleSpace: DecoratedBox(
           decoration: BoxDecoration(gradient: royalHeaderGradient),
         ),
       ),
@@ -182,6 +192,7 @@ class _AddPurchaseScreenState extends ConsumerState<AddPurchaseScreen> {
                           child: TextField(
                             controller: line.priceController,
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
                             decoration: const InputDecoration(
                               prefixText: '₹ ',
                               hintText: 'price',
@@ -294,7 +305,7 @@ class _SegmentButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: selected ? Colors.white : Colors.transparent,
+      color: selected ? ourShelfCard : Colors.transparent,
       borderRadius: BorderRadius.circular(11),
       elevation: selected ? 1 : 0,
       child: InkWell(

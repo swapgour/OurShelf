@@ -27,7 +27,7 @@ class ActivityScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Activity'),
-        flexibleSpace: const DecoratedBox(
+        flexibleSpace: DecoratedBox(
           decoration: BoxDecoration(gradient: royalHeaderGradient),
         ),
       ),
@@ -56,7 +56,7 @@ class ActivityScreen extends ConsumerWidget {
                   margin: const EdgeInsets.only(bottom: 8),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: ourShelfCard,
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(color: ourShelfBorder),
                   ),
@@ -68,7 +68,7 @@ class ActivityScreen extends ConsumerWidget {
                           color: ourShelfSeed.withValues(alpha: 0.1),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.history, color: ourShelfSeed, size: 18),
+                        child: Icon(Icons.history, color: ourShelfSeed, size: 18),
                       ),
                       const SizedBox(width: 12),
                       Expanded(

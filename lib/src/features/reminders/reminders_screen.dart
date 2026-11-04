@@ -25,7 +25,7 @@ class RemindersScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Reminders'),
-        flexibleSpace: const DecoratedBox(
+        flexibleSpace: DecoratedBox(
           decoration: BoxDecoration(gradient: royalHeaderGradient),
         ),
       ),
@@ -56,7 +56,7 @@ class RemindersScreen extends ConsumerWidget {
                   margin: const EdgeInsets.only(bottom: 10),
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: r.isDue ? ourShelfError.withValues(alpha: 0.08) : Colors.white,
+                    color: r.isDue ? ourShelfError.withValues(alpha: 0.08) : ourShelfCard,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: r.isDue ? ourShelfError.withValues(alpha: 0.3) : ourShelfBorder,

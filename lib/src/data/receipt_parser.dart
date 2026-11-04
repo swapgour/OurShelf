@@ -233,6 +233,85 @@ double _similarity(String a, String b) {
   return 1 - (distance / longest);
 }
 
+final _unitPattern = RegExp(
+  r'(\d+(?:\.\d+)?)\s*'
+  r'(kgs?|kilograms?|kilos?|grams?|gms?|g|ltrs?|litres?|liters?|l|ml|'
+  r'dozens?|dz|packets?|packs?|pcs?|pieces?|bunch(?:es)?|bottles?|'
+  r'box(?:es)?|jars?|tubes?)\b',
+  caseSensitive: false,
+);
+
+const _unitCanonical = {
+  'kg': 'kg', 'kgs': 'kg', 'kilogram': 'kg', 'kilograms': 'kg', 'kilo': 'kg', 'kilos': 'kg',
+  'g': 'g', 'gm': 'g', 'gms': 'g', 'gram': 'g', 'grams': 'g',
+  'l': 'L', 'ltr': 'L', 'ltrs': 'L', 'litre': 'L', 'litres': 'L', 'liter': 'L', 'liters': 'L',
+  'ml': 'ml',
+  'dozen': 'dozen', 'dozens': 'dozen', 'dz': 'dozen',
+  'pack': 'pack', 'packs': 'pack', 'packet': 'pack', 'packets': 'pack',
+  'pc': 'pc', 'pcs': 'pc', 'piece': 'pc', 'pieces': 'pc',
+  'bunch': 'bunch', 'bunches': 'bunch',
+  'bottle': 'bottle', 'bottles': 'bottle',
+  'box': 'box', 'boxes': 'box',
+  'jar': 'jar', 'jars': 'jar',
+  'tube': 'tube', 'tubes': 'tube',
+};
+
+/// Splits a free-typed or pasted shopping list — e.g. copied from a text
+/// message, one item per line or comma/semicolon separated, with or
+/// without quantities — into add-ready lines: a best-guess category from
+/// the starter catalogue, and a quantity/unit either read off the text or
+/// defaulted to that item's typical catalogue unit (so "Onion" alone comes
+/// out as 1 kg, "Milk" as 1 of its usual pack size, etc.).
+List<({String name, String category, String quantity, String unit})>
+parsePastedList(String text) {
+  const matchThreshold = 0.72;
+  final results = <({String name, String category, String quantity, String unit})>[];
+
+  for (final rawEntry in text.split(RegExp(r'[\n,;]+'))) {
+    var entry = rawEntry.trim();
+    if (entry.isEmpty) continue;
+    entry = entry.replaceFirst(_leadingMarker, '').trim();
+    if (entry.isEmpty) continue;
+
+    String? quantity;
+    String? unit;
+    final unitMatch = _unitPattern.firstMatch(entry);
+    if (unitMatch != null) {
+      quantity = _formatQty(unitMatch.group(1)!);
+      unit = _unitCanonical[unitMatch.group(2)!.toLowerCase()];
+      entry = (entry.substring(0, unitMatch.start) + entry.substring(unitMatch.end)).trim();
+    } else {
+      final leadingCount = _leadingQty.firstMatch(entry);
+      if (leadingCount != null) {
+        quantity = _formatQty(leadingCount.group(1)!);
+        entry = entry.substring(leadingCount.end).trim();
+      }
+    }
+
+    final name = entry.replaceAll(RegExp(r'^[\s\-:.,]+|[\s\-:.,]+$'), '').trim();
+    if (name.length < 2) continue;
+
+    CatalogueItem? best;
+    double bestScore = 0;
+    for (final c in starterCatalogue) {
+      final score = _similarity(name, c.name);
+      if (score > bestScore) {
+        bestScore = score;
+        best = c;
+      }
+    }
+    final matched = bestScore >= matchThreshold ? best : null;
+
+    results.add((
+      name: name,
+      category: matched?.category ?? 'Other',
+      quantity: quantity ?? '1',
+      unit: unit ?? matched?.unit ?? 'pc',
+    ));
+  }
+  return results;
+}
+
 /// What a scanned line resolved to: either an existing "to buy" item to
 /// mark bought, or a brand-new item (with a best-guess category/unit from
 /// the starter catalogue) to add as already bought.

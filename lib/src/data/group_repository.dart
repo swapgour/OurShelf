@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../notifications/push_trigger.dart';
 import 'group.dart';
 
 const _codeChars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I
@@ -16,10 +17,12 @@ String _generateInviteCode(Random random) {
 /// Manages the single group a user belongs to in MVP 1 (multi-group support
 /// is a later milestone per the product spec).
 class GroupRepository {
-  GroupRepository({FirebaseFirestore? firestore})
-    : _firestore = firestore ?? FirebaseFirestore.instance;
+  GroupRepository({FirebaseFirestore? firestore, PushTrigger? pushTrigger})
+    : _firestore = firestore ?? FirebaseFirestore.instance,
+      _push = pushTrigger ?? PushTrigger();
 
   final FirebaseFirestore _firestore;
+  final PushTrigger _push;
   final _random = Random();
 
   CollectionReference<Map<String, dynamic>> get _groups =>
@@ -116,15 +119,22 @@ class GroupRepository {
   }
 
   /// Tells the group "I'm at the store" so others can add last-minute items
-  /// while this member is still shopping.
+  /// while this member is still shopping — and pushes a notification to
+  /// everyone else so they actually see it in time to act.
   Future<void> startShopping({
     required String groupId,
     required String uid,
     required String displayName,
-  }) {
-    return _groups.doc(groupId).update({
+  }) async {
+    await _groups.doc(groupId).update({
       'shoppingNow.$uid': {'displayName': displayName},
     });
+    _push.notifyGroup(
+      groupId: groupId,
+      excludeUid: uid,
+      title: 'OurShelf',
+      body: '$displayName is shopping now — add anything you need!',
+    );
   }
 
   Future<void> stopShopping({required String groupId, required String uid}) {

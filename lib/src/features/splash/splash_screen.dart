@@ -121,7 +121,7 @@ class _SplashScreenState extends State<SplashScreen>
     final size = MediaQuery.of(context).size;
     return Scaffold(
       body: DecoratedBox(
-        decoration: const BoxDecoration(gradient: royalGradient),
+        decoration: BoxDecoration(gradient: royalGradient),
         child: Stack(
           children: [
             // Softly drifting translucent bubbles for continuous ambient motion.
@@ -174,29 +174,67 @@ class _SplashScreenState extends State<SplashScreen>
                               angle: _logoRotation.value,
                               child: Transform.scale(
                                 scale: _logoScale.value * pulseScale,
-                                child: Container(
-                                  padding: const EdgeInsets.all(24),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(
-                                          alpha: 0.18,
+                                child: Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(24),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(
+                                            alpha: 0.18,
+                                          ),
+                                          blurRadius: 24 + 10 * _pulse.value,
+                                          spreadRadius: 1 + 2 * _pulse.value,
                                         ),
-                                        blurRadius: 24 + 10 * _pulse.value,
-                                        spreadRadius: 1 + 2 * _pulse.value,
+                                      ],
+                                    ),
+                                    child: ShaderMask(
+                                      blendMode: BlendMode.srcIn,
+                                      shaderCallback: (bounds) =>
+                                          royalGradient.createShader(bounds),
+                                      child: const Icon(
+                                        Icons.shelves,
+                                        size: 64,
                                       ),
-                                    ],
+                                    ),
                                   ),
-                                  child: const Icon(
-                                    Icons.shopping_basket,
-                                    size: 64,
-                                    color: Color(0xFF4A148C),
+                                  // A small gold accent badge — the kind of
+                                  // premium "polish" detail a flat single
+                                  // icon doesn't have on its own.
+                                  Positioned(
+                                    right: -4,
+                                    bottom: -4,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(7),
+                                      decoration: BoxDecoration(
+                                        color: ourShelfAccent,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: Colors.white,
+                                          width: 2.5,
+                                        ),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withValues(alpha: 0.15),
+                                            blurRadius: 6,
+                                          ),
+                                        ],
+                                      ),
+                                      child: const Icon(
+                                        Icons.auto_awesome,
+                                        size: 14,
+                                        color: Color(0xFF4A148C),
+                                      ),
+                                    ),
                                   ),
-                                ),
+                                ],
                               ),
                             ),
+                          ),
                           ),
                           const SizedBox(height: 28),
                           Opacity(

@@ -7,6 +7,7 @@ import '../../data/category_style.dart';
 import '../../data/group.dart';
 import '../../data/pantry_item.dart';
 import '../../data/providers.dart';
+import '../../data/shopping_item.dart';
 import '../../widgets/motion.dart';
 
 Color _levelColor(StockLevel level) {
@@ -64,6 +65,48 @@ class PantryScreen extends ConsumerStatefulWidget {
 
 class _PantryScreenState extends ConsumerState<PantryScreen> {
   _Filter _filter = _Filter.all;
+  bool _syncing = false;
+
+  /// Catches pantry up with items that were already marked bought before
+  /// pantry top-up existed in the app, or if a sync was ever missed —
+  /// without this, those older purchases never retroactively show up here.
+  Future<void> _syncFromBought() async {
+    setState(() => _syncing = true);
+    try {
+      final items = await ref.read(shoppingItemsProvider(widget.groupId).future);
+      final toSync = items
+          .where((i) => i.status == ItemStatus.bought && !billCategories.contains(i.category))
+          .toList();
+      final pantryRepo = ref.read(pantryRepositoryProvider);
+      for (final item in toSync) {
+        await pantryRepo.topUpFromPurchase(
+          groupId: widget.groupId,
+          name: item.name,
+          category: item.category,
+          unit: item.unit,
+        );
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              toSync.isEmpty
+                  ? 'Nothing to sync — no bought grocery items yet'
+                  : 'Synced ${toSync.length} item${toSync.length == 1 ? '' : 's'} to pantry',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not sync pantry: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _syncing = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -77,20 +120,50 @@ class _PantryScreenState extends ConsumerState<PantryScreen> {
         title: Text(
           itemsAsync.value == null ? 'Pantry' : 'Pantry (${itemsAsync.value!.length})',
         ),
-        flexibleSpace: const DecoratedBox(
+        flexibleSpace: DecoratedBox(
           decoration: BoxDecoration(gradient: royalHeaderGradient),
         ),
+        actions: [
+          IconButton(
+            icon: _syncing
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  )
+                : const Icon(Icons.sync),
+            tooltip: 'Sync from bought items',
+            onPressed: _syncing ? null : _syncFromBought,
+          ),
+        ],
       ),
       body: itemsAsync.when(
         data: (items) {
           if (items.isEmpty) {
-            return const Center(
+            return Center(
               child: Padding(
-                padding: EdgeInsets.all(24),
-                child: Text(
-                  "Nothing tracked yet — items appear here once they're "
-                  'marked bought on the shared list.',
-                  textAlign: TextAlign.center,
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      "Nothing tracked yet — items appear here once they're "
+                      'marked bought on the shared list.',
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      onPressed: _syncing ? null : _syncFromBought,
+                      icon: _syncing
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.sync),
+                      label: const Text('Sync from bought items'),
+                    ),
+                  ],
                 ),
               ),
             );
@@ -182,7 +255,7 @@ class _FilterChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Expanded(
       child: Material(
-        color: selected ? ourShelfSeed : Colors.white,
+        color: selected ? ourShelfSeed : ourShelfCard,
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
@@ -272,7 +345,7 @@ class _PantryTile extends ConsumerWidget {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ourShelfCard,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: ourShelfBorder),
       ),
