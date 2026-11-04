@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../notifications/push_trigger.dart';
 import 'pantry_item.dart';
 
 /// Casual pantry tracking: one doc per item (keyed by its lowercased name),
@@ -7,10 +8,12 @@ import 'pantry_item.dart';
 /// this with full stock-movement tracking (purchases, consumption,
 /// corrections, batches/expiry) per the product spec.
 class PantryRepository {
-  PantryRepository({FirebaseFirestore? firestore})
-    : _firestore = firestore ?? FirebaseFirestore.instance;
+  PantryRepository({FirebaseFirestore? firestore, PushTrigger? pushTrigger})
+    : _firestore = firestore ?? FirebaseFirestore.instance,
+      _push = pushTrigger ?? PushTrigger();
 
   final FirebaseFirestore _firestore;
+  final PushTrigger _push;
 
   CollectionReference<Map<String, dynamic>> _pantry(String groupId) =>
       _firestore.collection('groups').doc(groupId).collection('pantry');
@@ -48,11 +51,23 @@ class PantryRepository {
     required String groupId,
     required String itemId,
     required StockLevel level,
-  }) {
-    return _pantry(groupId).doc(itemId).update({
+    required String itemName,
+    required String actorUid,
+  }) async {
+    await _pantry(groupId).doc(itemId).update({
       'level': stockLevelToString(level),
       'updatedAt': FieldValue.serverTimestamp(),
     });
+    if (level == StockLevel.low || level == StockLevel.out) {
+      _push.notifyGroup(
+        groupId: groupId,
+        excludeUid: actorUid,
+        title: 'OurShelf',
+        body: level == StockLevel.out
+            ? '$itemName is out — add it to the list?'
+            : '$itemName is running low — add it to the list?',
+      );
+    }
   }
 
   /// Sets or clears (pass null) an item's expiry date — "paneer expires

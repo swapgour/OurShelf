@@ -453,9 +453,17 @@ class _PantryTile extends ConsumerWidget {
                 side: BorderSide(color: selected ? c : ourShelfBorder),
                 onSelected: isViewer
                     ? null
-                    : (_) => ref
-                        .read(pantryRepositoryProvider)
-                        .setLevel(groupId: groupId, itemId: item.id, level: level),
+                    : (_) {
+                        final uid = ref.read(authStateProvider).value?.uid;
+                        if (uid == null) return;
+                        ref.read(pantryRepositoryProvider).setLevel(
+                          groupId: groupId,
+                          itemId: item.id,
+                          level: level,
+                          itemName: item.name,
+                          actorUid: uid,
+                        );
+                      },
               );
             }).toList(),
           ),

@@ -360,11 +360,15 @@ class _SignInScreenState extends ConsumerState<SignInScreen>
                                   controller: _phoneController,
                                   enabled: !_codeSent,
                                   keyboardType: TextInputType.phone,
+                                  style: const TextStyle(color: Color(0xFF252033)),
                                   decoration: InputDecoration(
                                     labelText: 'Phone number',
+                                    labelStyle: const TextStyle(color: Color(0xFF777182)),
                                     hintText: '+91 98765 43210',
+                                    hintStyle: const TextStyle(color: Color(0xFF777182)),
                                     prefixIcon: const Icon(
                                       Icons.phone_iphone,
+                                      color: Color(0xFF777182),
                                     ),
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(14),
@@ -396,9 +400,14 @@ class _SignInScreenState extends ConsumerState<SignInScreen>
                                   TextField(
                                     controller: _codeController,
                                     keyboardType: TextInputType.number,
+                                    style: const TextStyle(color: Color(0xFF252033)),
                                     decoration: InputDecoration(
                                       labelText: '6-digit code',
-                                      prefixIcon: const Icon(Icons.pin),
+                                      labelStyle: const TextStyle(color: Color(0xFF777182)),
+                                      prefixIcon: const Icon(
+                                        Icons.pin,
+                                        color: Color(0xFF777182),
+                                      ),
                                       border: OutlineInputBorder(
                                         borderRadius:
                                             BorderRadius.circular(14),

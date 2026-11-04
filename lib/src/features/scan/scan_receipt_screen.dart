@@ -313,7 +313,7 @@ class _PickImageBody extends StatelessWidget {
               "or printed list you've already bought — we'll read it and "
               "mark those items bought for you.",
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey.shade600),
+              style: TextStyle(color: ourShelfTextSecondary),
             ),
             const SizedBox(height: 28),
             SizedBox(
@@ -379,7 +379,7 @@ class _EmptyBody extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       child: Column(
         children: [
-          Icon(Icons.search_off, size: 48, color: Colors.grey.shade600),
+          Icon(Icons.search_off, size: 48, color: ourShelfTextSecondary),
           const SizedBox(height: 12),
           Text(
             rawLines.isEmpty
@@ -393,7 +393,7 @@ class _EmptyBody extends StatelessWidget {
             'Lay the receipt flat on a plain, well-lit surface, avoid glare '
             'and shadows, and fill the frame with just the receipt.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey.shade600),
+            style: TextStyle(color: ourShelfTextSecondary),
           ),
           const SizedBox(height: 20),
           FilledButton(onPressed: onRetry, child: const Text('Try again')),
@@ -403,7 +403,7 @@ class _EmptyBody extends StatelessWidget {
               alignment: Alignment.centerLeft,
               child: Text(
                 'What OCR read from the photo:',
-                style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey.shade600),
+                style: TextStyle(fontWeight: FontWeight.w600, color: ourShelfTextSecondary),
               ),
             ),
             const SizedBox(height: 8),
@@ -411,13 +411,13 @@ class _EmptyBody extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.grey.shade100,
+                color: ourShelfCard,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade300),
+                border: Border.all(color: ourShelfBorder),
               ),
               child: Text(
-                rawLines.join('\n'),
-                style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                rawLines.isEmpty ? '(nothing)' : rawLines.join('\n'),
+                style: TextStyle(fontFamily: 'monospace', fontSize: 12, color: ourShelfTextPrimary),
               ),
             ),
           ],
@@ -461,7 +461,7 @@ class _ReviewBody extends StatelessWidget {
             alignment: Alignment.centerLeft,
             child: Text(
               'Found ${matches.length} item${matches.length == 1 ? '' : 's'} — review before adding',
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+              style: TextStyle(color: ourShelfTextSecondary, fontSize: 13),
             ),
           ),
         ),
