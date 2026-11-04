@@ -77,7 +77,11 @@ class HomeScreen extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
               child: Row(
                 children: [
-                  Icon(Icons.shopping_basket, color: ourShelfSeed, size: 26),
+                  ShaderMask(
+                    blendMode: BlendMode.srcIn,
+                    shaderCallback: (bounds) => royalGradient.createShader(bounds),
+                    child: const Icon(Icons.shelves, size: 26),
+                  ),
                   const SizedBox(width: 8),
                   Text(
                     'OurShelf',
