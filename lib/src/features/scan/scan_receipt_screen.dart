@@ -11,6 +11,7 @@ import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart
 import 'package:image_picker/image_picker.dart';
 import 'package:pdfx/pdfx.dart' as pdfx;
 
+import '../../ai/receipt_ai_client.dart';
 import '../../app.dart';
 import '../../auth/auth_providers.dart';
 import '../../data/category_style.dart';
@@ -201,8 +202,38 @@ class _ScanReceiptScreenState extends ConsumerState<ScanReceiptScreen> {
     }
   }
 
+  /// Prefers the AI parser (handles messy, out-of-order OCR text — multi
+  /// column app order PDFs especially — far better than fixed regexes can)
+  /// and falls back to the local line-by-line parser if the AI backend
+  /// isn't configured or the request fails, so scanning still works
+  /// without it.
+  Future<List<ParsedLine>> _parseLines(List<String> rawLines) async {
+    final aiClient = ReceiptAiClient();
+    if (aiClient.isConfigured) {
+      try {
+        final items = await aiClient.parseItems(rawLines);
+        if (items.isNotEmpty) {
+          return items
+              .map(
+                (i) => ParsedLine(
+                  rawText: i.name,
+                  name: i.name,
+                  price: i.price,
+                  quantity: i.quantity,
+                  unit: i.unit,
+                ),
+              )
+              .toList();
+        }
+      } catch (_) {
+        // Fall through to the local parser below.
+      }
+    }
+    return parseReceiptLines(rawLines);
+  }
+
   Future<void> _finishWithLines(List<String> rawLines) async {
-    final parsed = parseReceiptLines(rawLines);
+    final parsed = await _parseLines(rawLines);
     final currentItems = ref.read(shoppingItemsProvider(widget.groupId)).value ?? [];
     final matches = matchScannedLines(lines: parsed, currentItems: currentItems);
 

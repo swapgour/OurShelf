@@ -10,12 +10,17 @@ class ParsedLine {
     required this.name,
     this.price,
     this.quantity,
+    this.unit,
   });
 
   final String rawText;
   final String name;
   final double? price;
   final String? quantity;
+  /// A unit read directly off the source (set only when the AI receipt
+  /// parser supplied one); null falls back to the starter catalogue's
+  /// guess in [matchScannedLines].
+  final String? unit;
 }
 
 /// Lines that are store/receipt boilerplate rather than purchased items —
@@ -390,10 +395,10 @@ List<ScanMatch> matchScannedLines({
       return ScanMatch(
         line: line,
         suggestedCategory: bestCatalogue.category,
-        suggestedUnit: bestCatalogue.unit,
+        suggestedUnit: line.unit ?? bestCatalogue.unit,
       );
     }
 
-    return ScanMatch(line: line);
+    return ScanMatch(line: line, suggestedUnit: line.unit ?? 'pc');
   }).toList();
 }

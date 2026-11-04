@@ -298,6 +298,95 @@ async function handleAsk(request, env, payload) {
   });
 }
 
+// Scanned/photographed receipts and (especially) app order-confirmation
+// PDFs read by on-device OCR come back as messy, out-of-order text — an
+// item's name, quantity and price are often on separate lines, mixed in
+// with boilerplate (addresses, discounts, delivery info). Rather than
+// extend brittle regex heuristics for every store/app's layout, hand the
+// raw OCR lines to the same free Groq model used for Ask AI and let it
+// extract a clean item list.
+async function parseReceiptWithGroq(env, rawLines) {
+  const models = await listGroqModels(env.GROQ_API_KEY);
+  if (models.length === 0) throw new Error('No Groq models available — check GROQ_API_KEY');
+
+  const systemPrompt =
+    'You are reading raw, messy OCR text extracted from a photographed or ' +
+    'scanned grocery receipt, bill, or app order-confirmation PDF. The text ' +
+    'may be out of reading order, with an item\'s name/quantity/price split ' +
+    'across separate lines, contain OCR typos, and mix in boilerplate ' +
+    '(store name, address, date, payment info, delivery charges, totals). ' +
+    'Extract ONLY the actual purchased items.\n\n' +
+    'Return ONLY a JSON object of this exact shape, nothing else:\n' +
+    '{"items": [{"name": "string", "quantity": "string or null", "unit": "string or null", "price": number or null}]}\n\n' +
+    'Rules:\n' +
+    '- name: the product name, cleaned up (fix obvious OCR typos, merge a ' +
+    'name split across two lines into one).\n' +
+    '- quantity: just the number, as a string (e.g. "1", "2.5"), or null if ' +
+    'not shown.\n' +
+    '- unit: e.g. "kg", "g", "ml", "L", "pack", "pc", "dozen" — or null if ' +
+    'not shown.\n' +
+    '- price: the item\'s final/actual price paid, as a plain number (no ' +
+    'currency symbol), or null if not shown. If both an original and a ' +
+    'discounted/"you pay" price are shown for the same item, use the ' +
+    'discounted one.\n' +
+    '- Skip delivery charges, discounts shown as their own line, taxes, ' +
+    'totals, addresses, dates, order/shipment IDs, payment info, and any ' +
+    'other non-item text.\n' +
+    '- Never invent an item that is not actually in the text.';
+
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: rawLines.join('\n') },
+  ];
+
+  let model = pickBestModel(models);
+  const tried = [];
+  for (let attempt = 0; attempt < 2 && model; attempt++) {
+    tried.push(model);
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${env.GROQ_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        temperature: 0.1,
+        max_completion_tokens: 4000,
+        response_format: { type: 'json_object' },
+      }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const content = data.choices?.[0]?.message?.content?.trim() || '{}';
+      try {
+        const parsed = JSON.parse(content);
+        return Array.isArray(parsed.items) ? parsed.items : [];
+      } catch {
+        return [];
+      }
+    }
+    const bodyText = await res.text();
+    const next = pickBestModel(models, tried);
+    if (!next) throw new Error(`Groq error (model ${model}): ${bodyText}`);
+    model = next;
+  }
+  throw new Error('Groq request failed after retrying with an alternate model.');
+}
+
+async function handleParseItems(request, env, payload) {
+  const { rawLines } = payload;
+  if (!Array.isArray(rawLines) || rawLines.length === 0) {
+    return new Response('missing rawLines', { status: 400 });
+  }
+  const items = await parseReceiptWithGroq(env, rawLines);
+  return new Response(JSON.stringify({ items }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
 export default {
   async fetch(request, env) {
     if (request.method !== 'POST') return new Response('ok', { status: 200 });
@@ -311,6 +400,7 @@ export default {
 
     try {
       if (payload.type === 'ask') return await handleAsk(request, env, payload);
+      if (payload.type === 'parse_items') return await handleParseItems(request, env, payload);
       return await handleNotify(request, env, payload);
     } catch (err) {
       return new Response('error: ' + err.message, { status: 500 });
