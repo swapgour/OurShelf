@@ -9,6 +9,7 @@ import '../activity/activity_screen.dart';
 import '../ai/ask_ai_screen.dart';
 import '../bills/add_bill_screen.dart';
 import '../dashboard/dashboard_screen.dart';
+import '../documents/document_library_screen.dart';
 import '../expenses/expenses_screen.dart';
 import '../groups/group_sheet.dart';
 import '../reminders/reminders_screen.dart';
@@ -117,6 +118,15 @@ class MoreScreen extends ConsumerWidget {
                 subtitle: 'EMI, internet, recharge, transfers',
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => AddBillScreen(groupId: groupId)),
+                ),
+              ),
+              _MoreTile(
+                icon: Icons.folder_copy_outlined,
+                color: const Color(0xFF006064),
+                title: 'Document History',
+                subtitle: 'Every scanned/uploaded bill, saved permanently',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => DocumentLibraryScreen(groupId: groupId)),
                 ),
               ),
               _MoreTile(

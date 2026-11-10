@@ -6,6 +6,7 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../../app.dart';
 import '../../auth/auth_providers.dart';
 import '../../data/catalogue.dart';
+import '../../data/categorization_service.dart';
 import '../../data/category_style.dart';
 import '../../data/group.dart';
 import '../../data/providers.dart';
@@ -107,6 +108,8 @@ class _HomeContent extends ConsumerWidget {
                   );
                 case 'invite':
                   _showGroupSheet(context, ref, group);
+                case 'recategorize':
+                  _recategorizeOther(context, ref);
                 case 'signout':
                   ref.read(authRepositoryProvider).signOut();
               }
@@ -141,6 +144,14 @@ class _HomeContent extends ConsumerWidget {
                 child: ListTile(
                   leading: Icon(Icons.group_add),
                   title: Text('Invite / join a group'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              PopupMenuItem(
+                value: 'recategorize',
+                child: ListTile(
+                  leading: Icon(Icons.auto_fix_high_outlined),
+                  title: Text('Fix "Other" categories'),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
@@ -317,6 +328,42 @@ class _HomeContent extends ConsumerWidget {
       isScrollControlled: true,
       builder: (_) => _AddItemSheet(groupId: groupId),
     );
+  }
+
+  /// One-time fix-up for items stuck in "Other" from before manual "Add
+  /// item" used the categorization service — re-runs every such item (list
+  /// and pantry) through it now and corrects any that resolve.
+  Future<void> _recategorizeOther(BuildContext context, WidgetRef ref) async {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Checking items in "Other"…')),
+    );
+    try {
+      final shoppingChanged = await ref
+          .read(shoppingListRepositoryProvider)
+          .recategorizeOtherItems(groupId);
+      final pantryChanged = await ref
+          .read(pantryRepositoryProvider)
+          .recategorizeOtherItems(groupId);
+      final changed = {...shoppingChanged, ...pantryChanged};
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            changed.isEmpty
+                ? 'Nothing to fix — everything in "Other" is genuinely unrecognized'
+                : 'Recategorized ${changed.length} item${changed.length == 1 ? '' : 's'}: '
+                      '${changed.take(5).join(', ')}${changed.length > 5 ? '…' : ''}',
+          ),
+          duration: const Duration(seconds: 5),
+        ),
+      );
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not recategorize: $e')),
+        );
+      }
+    }
   }
 }
 
@@ -1115,12 +1162,79 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
     return groups.take(10).map((g) => g.first).toList();
   }
 
+  /// Resolves a best-guess category/unit for a manually typed product name
+  /// — a previously learned choice for this group, then the shared
+  /// categorization service's catalogue match. Never blocks on asking the
+  /// user: an unrecognized name (a custom expense like "Daily Expense", not
+  /// a known product) is meant to land in "Other" without interruption —
+  /// [_addCustom] offers fixing that afterward instead, via a SnackBar.
+  Future<({String category, String unit})> _resolveCategory(String name) async {
+    final learned = await ref
+        .read(categorizationRepositoryProvider)
+        .lookupLearned(groupId: widget.groupId, name: name);
+    if (learned != null) {
+      return (category: learned['category']!, unit: learned['unit'] ?? 'pc');
+    }
+    final matched = matchProductCategory(name);
+    if (matched != null) {
+      return (category: matched.category, unit: matched.unit);
+    }
+    return (category: 'Other', unit: 'pc');
+  }
+
   Future<void> _addCustom() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) return;
-    await _add(name: name, category: 'Other', quantity: _qtyController.text.trim().isEmpty ? '1' : _qtyController.text.trim(), unit: 'pc');
+    final resolved = await _resolveCategory(name);
+    await _add(
+      name: name,
+      category: resolved.category,
+      quantity: _qtyController.text.trim().isEmpty ? '1' : _qtyController.text.trim(),
+      unit: resolved.unit,
+    );
     _nameController.clear();
     _qtyController.text = '1';
+
+    // Only offer to categorize when it actually landed in "Other" — a
+    // recognized product never shows this.
+    if (resolved.category == 'Other' && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Added "$name" under Other'),
+          action: SnackBarAction(label: 'Categorize', onPressed: () => _categorizeAfterAdd(name)),
+        ),
+      );
+    }
+  }
+
+  /// Optional, user-initiated follow-up from the "Categorize" SnackBar
+  /// action — picks a category for an item that landed in "Other", updates
+  /// that item, and remembers the choice for next time. Choosing "Other"
+  /// again, or dismissing, changes and remembers nothing.
+  Future<void> _categorizeAfterAdd(String name) async {
+    if (!mounted) return;
+    final picked = await showDialog<String>(
+      context: context,
+      builder: (_) => _CategoryPickerDialog(productName: name),
+    );
+    if (picked == null || picked == 'Other') return;
+
+    await ref.read(categorizationRepositoryProvider).saveLearned(
+      groupId: widget.groupId,
+      name: name,
+      category: picked,
+      unit: 'pc',
+    );
+    final match = await ref
+        .read(shoppingListRepositoryProvider)
+        .findRecentMatch(groupId: widget.groupId, name: name);
+    if (match != null) {
+      await ref.read(shoppingListRepositoryProvider).updateCategory(
+        groupId: widget.groupId,
+        itemId: match.id,
+        category: picked,
+      );
+    }
   }
 
   Future<void> _add({
@@ -1719,6 +1833,88 @@ class _PasteListSheetState extends ConsumerState<_PasteListSheet> {
           ),
         );
       },
+    );
+  }
+}
+
+/// Shown only when a manually typed product matches neither the group's
+/// own learned choices nor the shared catalogue — asks once, then the
+/// categorization service remembers the answer for next time.
+class _CategoryPickerDialog extends StatefulWidget {
+  const _CategoryPickerDialog({required this.productName});
+
+  final String productName;
+
+  @override
+  State<_CategoryPickerDialog> createState() => _CategoryPickerDialogState();
+}
+
+class _CategoryPickerDialogState extends State<_CategoryPickerDialog> {
+  String? _selected;
+  bool _other = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('What category is "${widget.productName}"?'),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              "We haven't seen this product before — pick a category and "
+              "we'll remember it next time.",
+              style: TextStyle(fontSize: 13, color: ourShelfTextSecondary),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 280,
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  for (final c in catalogueCategories)
+                    ListTile(
+                      dense: true,
+                      title: Text(c),
+                      leading: Icon(
+                        !_other && _selected == c
+                            ? Icons.radio_button_checked
+                            : Icons.radio_button_unchecked,
+                        color: !_other && _selected == c ? ourShelfSeed : ourShelfTextSecondary,
+                      ),
+                      onTap: () => setState(() {
+                        _other = false;
+                        _selected = c;
+                      }),
+                    ),
+                  ListTile(
+                    dense: true,
+                    title: const Text('Other'),
+                    leading: Icon(
+                      _other ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                      color: _other ? ourShelfSeed : ourShelfTextSecondary,
+                    ),
+                    onTap: () => setState(() => _other = true),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: (_other || _selected != null)
+              ? () => Navigator.of(context).pop(_other ? 'Other' : _selected)
+              : null,
+          child: const Text('Add'),
+        ),
+      ],
     );
   }
 }

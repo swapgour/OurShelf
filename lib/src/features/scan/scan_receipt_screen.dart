@@ -16,6 +16,7 @@ import '../../app.dart';
 import '../../auth/auth_providers.dart';
 import '../../data/category_style.dart';
 import '../../data/providers.dart';
+import '../../data/stored_document.dart';
 import '../../data/purchase_commit.dart';
 import '../../data/receipt_parser.dart';
 import '../../widgets/motion.dart';
@@ -56,12 +57,38 @@ class _ScanReceiptScreenState extends ConsumerState<ScanReceiptScreen> {
     ];
   }
 
+  /// Permanently stores the original picked file, independent of whatever
+  /// OCR does with it next — a failed or skipped extraction must never
+  /// lose the bill itself. Best-effort: silently does nothing if there's
+  /// no signed-in user, the file is too large for in-app storage, or an
+  /// identical file is already saved, rather than interrupting the scan.
+  Future<void> _storeOriginal(String path, String mimeType, String name) async {
+    try {
+      final user = ref.read(authStateProvider).value;
+      if (user == null) return;
+      final bytes = await File(path).readAsBytes();
+      await ref.read(documentRepositoryProvider).uploadDocument(
+        groupId: widget.groupId,
+        bytes: bytes,
+        name: name,
+        mimeType: mimeType,
+        category: 'Other',
+        uploadedByUid: user.uid,
+        uploadedByName: user.displayName ?? user.phoneNumber ?? 'Member',
+        ocrStatus: DocumentOcrStatus.pending,
+      );
+    } catch (_) {
+      // Best-effort only — the scan itself must not be blocked by this.
+    }
+  }
+
   Future<void> _pickAndScan(ImageSource source) async {
     final picker = ImagePicker();
     final file = await picker.pickImage(source: source, imageQuality: 85);
     if (file == null) return;
 
     setState(() => _stage = _ScanStage.reading);
+    unawaited(_storeOriginal(file.path, 'image/jpeg', file.name));
     final recognizer = TextRecognizer(script: TextRecognitionScript.latin);
     try {
       final rawLines = await _ocrImageFile(recognizer, file.path);
@@ -172,6 +199,7 @@ class _ScanReceiptScreenState extends ConsumerState<ScanReceiptScreen> {
     if (path == null) return;
 
     setState(() => _stage = _ScanStage.reading);
+    unawaited(_storeOriginal(path, 'application/pdf', result!.files.single.name));
     final recognizer = TextRecognizer(script: TextRecognitionScript.latin);
     pdfx.PdfDocument? document;
     final tempFiles = <File>[];

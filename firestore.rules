@@ -61,6 +61,20 @@ service cloud.firestore {
         allow read: if isMember();
         allow write: if isMember() && isNotViewer();
       }
+
+      // A group's own learned product→category choices (see
+      // CategorizationRepository) — same access as items/pantry.
+      match /categoryAliases/{aliasId} {
+        allow read: if isMember();
+        allow write: if isMember() && isNotViewer();
+      }
+
+      // Stored originals of scanned/uploaded bills and receipts (see
+      // DocumentRepository) — same access as items/pantry.
+      match /documents/{documentId} {
+        allow read: if isMember();
+        allow write: if isMember() && isNotViewer();
+      }
     }
 
     // Maps a short invite code -> groupId so a joining user can look up

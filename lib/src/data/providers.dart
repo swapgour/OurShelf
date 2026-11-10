@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../auth/auth_providers.dart';
 import 'activity_entry.dart';
 import 'activity_repository.dart';
+import 'categorization_service.dart';
+import 'document_repository.dart';
+import 'stored_document.dart';
 import 'group.dart';
 import 'group_repository.dart';
 import 'pantry_item.dart';
@@ -15,6 +18,20 @@ import 'shopping_list_repository.dart';
 final groupRepositoryProvider = Provider<GroupRepository>((ref) {
   return GroupRepository();
 });
+
+final categorizationRepositoryProvider = Provider<CategorizationRepository>((ref) {
+  return CategorizationRepository();
+});
+
+final documentRepositoryProvider = Provider<DocumentRepository>((ref) {
+  return DocumentRepository();
+});
+
+final documentsProvider = StreamProvider.autoDispose.family<List<StoredDocument>, String>(
+  (ref, groupId) {
+    return ref.watch(documentRepositoryProvider).watchDocuments(groupId);
+  },
+);
 
 final shoppingListRepositoryProvider = Provider<ShoppingListRepository>((
   ref,

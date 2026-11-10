@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../notifications/push_trigger.dart';
+import 'categorization_service.dart';
 import 'pantry_item.dart';
 
 /// Casual pantry tracking: one doc per item (keyed by its lowercased name),
@@ -82,5 +83,39 @@ class PantryRepository {
           ? FieldValue.delete()
           : Timestamp.fromDate(expiryDate),
     });
+  }
+
+  Future<void> deleteItem({required String groupId, required String itemId}) {
+    return _pantry(groupId).doc(itemId).delete();
+  }
+
+  Future<void> updateUnit({
+    required String groupId,
+    required String itemId,
+    required String unit,
+  }) {
+    return _pantry(groupId).doc(itemId).update({
+      'unit': unit,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  /// Same one-time fix-up as [ShoppingListRepository.recategorizeOtherItems],
+  /// for pantry entries. Returns the names that were changed.
+  Future<List<String>> recategorizeOtherItems(String groupId) async {
+    final snap = await _pantry(
+      groupId,
+    ).where('category', isEqualTo: 'Other').get();
+    final batch = _firestore.batch();
+    final changed = <String>[];
+    for (final doc in snap.docs) {
+      final name = doc.data()['name'] as String? ?? '';
+      final matched = matchProductCategory(name);
+      if (matched == null) continue;
+      batch.update(doc.reference, {'category': matched.category});
+      changed.add(name);
+    }
+    if (changed.isNotEmpty) await batch.commit();
+    return changed;
   }
 }

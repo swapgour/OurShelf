@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../notifications/push_trigger.dart';
+import 'categorization_service.dart';
 import 'shopping_item.dart';
 
 class ShoppingListRepository {
@@ -221,6 +222,14 @@ class ShoppingListRepository {
     ).doc(itemId).update({'quantity': quantity, 'unit': unit});
   }
 
+  Future<void> updateCategory({
+    required String groupId,
+    required String itemId,
+    required String category,
+  }) {
+    return _items(groupId).doc(itemId).update({'category': category});
+  }
+
   /// Past purchases of an item by name, newest first — "you paid ₹145 last
   /// time; today ₹165". Sorted client-side to avoid requiring a composite
   /// index on top of the nameLower equality filter.
@@ -246,5 +255,27 @@ class ShoppingListRepository {
 
   Future<void> deleteItem({required String groupId, required String itemId}) {
     return _items(groupId).doc(itemId).delete();
+  }
+
+  /// One-time fix-up: re-runs every item currently stuck in "Other" through
+  /// the categorization service now that it actually matches products
+  /// manually typed in (previously only scanning/pasting used it), and
+  /// corrects any that now resolve to a real category. Leaves genuinely
+  /// unrecognized products in "Other". Returns the names that were changed.
+  Future<List<String>> recategorizeOtherItems(String groupId) async {
+    final snap = await _items(
+      groupId,
+    ).where('category', isEqualTo: 'Other').get();
+    final batch = _firestore.batch();
+    final changed = <String>[];
+    for (final doc in snap.docs) {
+      final name = doc.data()['name'] as String? ?? '';
+      final matched = matchProductCategory(name);
+      if (matched == null) continue;
+      batch.update(doc.reference, {'category': matched.category});
+      changed.add(name);
+    }
+    if (changed.isNotEmpty) await batch.commit();
+    return changed;
   }
 }

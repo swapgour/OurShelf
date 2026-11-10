@@ -1,4 +1,4 @@
-import 'catalogue.dart';
+import 'categorization_service.dart';
 import 'shopping_item.dart';
 
 /// One candidate item parsed out of a line of OCR text from a purchased
@@ -222,43 +222,6 @@ List<ParsedLine> parseReceiptLines(List<String> rawLines) {
   return results;
 }
 
-String _normalize(String s) =>
-    s.toLowerCase().replaceAll(RegExp(r'[^a-z0-9 ]'), '').trim();
-
-/// Classic edit-distance — small inputs (item names), so the O(n*m) table is
-/// cheap enough without a package dependency.
-int _levenshtein(String a, String b) {
-  if (a == b) return 0;
-  if (a.isEmpty) return b.length;
-  if (b.isEmpty) return a.length;
-  final prev = List<int>.generate(b.length + 1, (j) => j);
-  final curr = List<int>.filled(b.length + 1, 0);
-  for (var i = 1; i <= a.length; i++) {
-    curr[0] = i;
-    for (var j = 1; j <= b.length; j++) {
-      final cost = a[i - 1] == b[j - 1] ? 0 : 1;
-      curr[j] = [curr[j - 1] + 1, prev[j] + 1, prev[j - 1] + cost]
-          .reduce((v, e) => v < e ? v : e);
-    }
-    for (var j = 0; j <= b.length; j++) {
-      prev[j] = curr[j];
-    }
-  }
-  return prev[b.length];
-}
-
-/// 1.0 = identical, 0.0 = nothing in common.
-double _similarity(String a, String b) {
-  final na = _normalize(a);
-  final nb = _normalize(b);
-  if (na.isEmpty || nb.isEmpty) return 0;
-  if (na == nb) return 1;
-  if (na.contains(nb) || nb.contains(na)) return 0.85;
-  final distance = _levenshtein(na, nb);
-  final longest = na.length > nb.length ? na.length : nb.length;
-  return 1 - (distance / longest);
-}
-
 final _unitPattern = RegExp(
   r'(\d+(?:\.\d+)?)\s*'
   r'(kgs?|kilograms?|kilos?|grams?|gms?|g|ltrs?|litres?|liters?|l|ml|'
@@ -290,7 +253,6 @@ const _unitCanonical = {
 /// out as 1 kg, "Milk" as 1 of its usual pack size, etc.).
 List<({String name, String category, String quantity, String unit})>
 parsePastedList(String text) {
-  const matchThreshold = 0.72;
   final results = <({String name, String category, String quantity, String unit})>[];
 
   for (final rawEntry in text.split(RegExp(r'[\n,;]+'))) {
@@ -317,16 +279,7 @@ parsePastedList(String text) {
     final name = entry.replaceAll(RegExp(r'^[\s\-:.,]+|[\s\-:.,]+$'), '').trim();
     if (name.length < 2) continue;
 
-    CatalogueItem? best;
-    double bestScore = 0;
-    for (final c in starterCatalogue) {
-      final score = _similarity(name, c.name);
-      if (score > bestScore) {
-        bestScore = score;
-        best = c;
-      }
-    }
-    final matched = bestScore >= matchThreshold ? best : null;
+    final matched = matchProductCategory(name);
 
     results.add((
       name: name,
@@ -366,13 +319,12 @@ List<ScanMatch> matchScannedLines({
   required List<ShoppingItem> currentItems,
 }) {
   final toBuy = currentItems.where((i) => i.status == ItemStatus.toBuy).toList();
-  const matchThreshold = 0.72;
 
   return lines.map((line) {
     ShoppingItem? best;
     double bestScore = 0;
     for (final item in toBuy) {
-      final score = _similarity(line.name, item.name);
+      final score = productNameSimilarity(line.name, item.name);
       if (score > bestScore) {
         bestScore = score;
         best = item;
@@ -382,16 +334,8 @@ List<ScanMatch> matchScannedLines({
       return ScanMatch(line: line, matchedItem: best);
     }
 
-    CatalogueItem? bestCatalogue;
-    double bestCatalogueScore = 0;
-    for (final entry in starterCatalogue) {
-      final score = _similarity(line.name, entry.name);
-      if (score > bestCatalogueScore) {
-        bestCatalogueScore = score;
-        bestCatalogue = entry;
-      }
-    }
-    if (bestCatalogue != null && bestCatalogueScore >= matchThreshold) {
+    final bestCatalogue = matchProductCategory(line.name);
+    if (bestCatalogue != null) {
       return ScanMatch(
         line: line,
         suggestedCategory: bestCatalogue.category,

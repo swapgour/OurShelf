@@ -1,12 +1,23 @@
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../app.dart';
 import '../../auth/auth_providers.dart';
 import '../../data/category_style.dart';
 import '../../data/group.dart';
 import '../../data/providers.dart';
+import '../../data/stored_document.dart';
+
+String _documentCategoryForBill(String billCategory) => switch (billCategory) {
+  'House EMI' || 'Transfer to Parents' => 'Finance',
+  'Internet Bill' || 'Mobile Recharge' || 'Electricity Bill' => 'Utilities',
+  _ => 'Other',
+};
 
 /// Logs a household bill/transfer — House EMI, internet, mobile recharge,
 /// money sent to parents, etc. These aren't groceries (no quantity/unit,
@@ -30,6 +41,66 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
   DateTime _date = DateTime.now();
   String? _paidByUid;
   bool _saving = false;
+  Uint8List? _attachmentBytes;
+  String? _attachmentName;
+  String? _attachmentMime;
+
+  Future<void> _pickAttachment() async {
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('Take a photo'),
+              onTap: () => Navigator.of(context).pop('camera'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Choose from gallery'),
+              onTap: () => Navigator.of(context).pop('gallery'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.picture_as_pdf_outlined),
+              title: const Text('Upload a PDF'),
+              onTap: () => Navigator.of(context).pop('pdf'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (choice == null) return;
+
+    if (choice == 'pdf') {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+      );
+      final path = result?.files.single.path;
+      if (path == null) return;
+      final bytes = await File(path).readAsBytes();
+      setState(() {
+        _attachmentBytes = bytes;
+        _attachmentName = result!.files.single.name;
+        _attachmentMime = 'application/pdf';
+      });
+    } else {
+      final picker = ImagePicker();
+      final file = await picker.pickImage(
+        source: choice == 'camera' ? ImageSource.camera : ImageSource.gallery,
+        imageQuality: 85,
+      );
+      if (file == null) return;
+      final bytes = await file.readAsBytes();
+      setState(() {
+        _attachmentBytes = bytes;
+        _attachmentName = file.name;
+        _attachmentMime = 'image/jpeg';
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -84,6 +155,28 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
       actorName: paidByName,
       summary: 'Logged $_category — ₹${amount.toStringAsFixed(0)}',
     );
+
+    final attachment = _attachmentBytes;
+    if (attachment != null) {
+      // Best-effort — the bill itself is already saved above regardless of
+      // whether the attachment upload succeeds.
+      try {
+        await ref.read(documentRepositoryProvider).uploadDocument(
+          groupId: widget.groupId,
+          bytes: attachment,
+          name: name,
+          mimeType: _attachmentMime!,
+          category: _documentCategoryForBill(_category),
+          documentDate: _date,
+          provider: note.isEmpty ? null : note,
+          amount: amount,
+          uploadedByUid: user.uid,
+          uploadedByName: paidByName,
+          ocrStatus: DocumentOcrStatus.notApplicable,
+        );
+      } catch (_) {}
+    }
+
     if (mounted) Navigator.of(context).pop();
   }
 
@@ -171,6 +264,48 @@ class _AddBillScreenState extends ConsumerState<AddBillScreen> {
             ],
             onChanged: (v) => setState(() => _paidByUid = v),
           ),
+          const SizedBox(height: 16),
+          if (_attachmentName == null)
+            OutlinedButton.icon(
+              onPressed: _pickAttachment,
+              icon: const Icon(Icons.attach_file),
+              label: const Text('Attach bill (photo or PDF) — optional'),
+            )
+          else
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: ourShelfCard,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: ourShelfBorder),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    _attachmentMime == 'application/pdf'
+                        ? Icons.picture_as_pdf_outlined
+                        : Icons.image_outlined,
+                    color: ourShelfSeed,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      _attachmentName!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 18),
+                    onPressed: () => setState(() {
+                      _attachmentBytes = null;
+                      _attachmentName = null;
+                      _attachmentMime = null;
+                    }),
+                  ),
+                ],
+              ),
+            ),
           const SizedBox(height: 90),
         ],
       ),
