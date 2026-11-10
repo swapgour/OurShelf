@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -13,25 +14,30 @@ String _statusText(StockLevel level) => switch (level) {
   StockLevel.out => 'Empty',
 };
 
-/// "2", "1.5" — trims a trailing ".0", or "—" when no purchase has been
-/// recorded for this item yet (not the same as a quantity of zero).
+/// "2", "1.5" — trims a trailing ".0", or "-" when no purchase has been
+/// recorded for this item yet (not the same as a quantity of zero). A
+/// plain hyphen rather than an "—" em dash — the PDF's default font has no
+/// glyph for that either and renders it as a missing-character box, same
+/// issue as the rupee sign below.
 String _quantityText(num totalPurchased) {
-  if (totalPurchased <= 0) return '—';
+  if (totalPurchased <= 0) return '-';
   return totalPurchased == totalPurchased.roundToDouble()
       ? totalPurchased.toStringAsFixed(0)
       : totalPurchased.toString();
 }
 
-/// "Rs 290", or "—" when no purchase of this item had a price logged.
+/// "Rs 290", or "-" when no purchase of this item had a price logged.
 /// Spelled out rather than "₹" — the PDF's default font has no glyph for
 /// the rupee sign and would render it as a missing-character box.
 String _amountText(num totalAmount) {
-  if (totalAmount <= 0) return '—';
+  if (totalAmount <= 0) return '-';
   return 'Rs ${totalAmount.toStringAsFixed(0)}';
 }
 
 Future<Uint8List> _buildPdfBytes(List<PantryItem> items) async {
   final doc = pw.Document();
+  final logoBytes = await rootBundle.load('assets/icon/icon_doc.png');
+  final logo = pw.MemoryImage(logoBytes.buffer.asUint8List());
 
   final byCategory = <String, List<PantryItem>>{};
   for (final item in items) {
@@ -52,23 +58,33 @@ Future<Uint8List> _buildPdfBytes(List<PantryItem> items) async {
       margin: const pw.EdgeInsets.fromLTRB(32, 32, 32, 40),
       header: (context) => context.pageNumber == 1
           ? pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              crossAxisAlignment: pw.CrossAxisAlignment.center,
               children: [
+                pw.Image(logo, width: 44, height: 44),
+                pw.SizedBox(height: 6),
                 pw.Text(
                   'OurShelf',
                   style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold),
+                  textAlign: pw.TextAlign.center,
                 ),
-                pw.Text('Pantry Inventory Report', style: const pw.TextStyle(fontSize: 13)),
+                pw.Text(
+                  'Pantry Inventory Report',
+                  style: const pw.TextStyle(fontSize: 13),
+                  textAlign: pw.TextAlign.center,
+                ),
                 pw.SizedBox(height: 2),
                 pw.Text(
                   'Generated $generatedAt',
                   style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600),
+                  textAlign: pw.TextAlign.center,
                 ),
                 pw.SizedBox(height: 8),
                 pw.Text(
                   'Total items: ${items.length}   |   Low stock: $lowCount   |   Empty: $emptyCount',
                   style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
+                  textAlign: pw.TextAlign.center,
                 ),
+                pw.SizedBox(height: 8),
                 pw.Divider(thickness: 1),
               ],
             )
@@ -120,6 +136,11 @@ Future<Uint8List> _buildPdfBytes(List<PantryItem> items) async {
 
   return doc.save();
 }
+
+/// Exposed for `tool/export_sample_pdf.dart` and for anything else that
+/// wants the raw bytes without going through a platform print/share
+/// channel (e.g. a future email/upload flow).
+Future<Uint8List> buildPantryInventoryPdfBytes(List<PantryItem> items) => _buildPdfBytes(items);
 
 /// Opens the system print/save dialog with the pantry's current data as a
 /// PDF — the user can save it (acts as a download, via the OS's own "Save

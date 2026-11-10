@@ -1,4 +1,6 @@
 # Miscellaneous
+# Scratch output from tool/export_sample_pdf.dart.
+/sample_pantry.pdf
 *.class
 *.log
 *.pyc

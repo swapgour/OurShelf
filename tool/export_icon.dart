@@ -74,6 +74,16 @@ void main() {
         size: 1024,
         contentFraction: 0.58,
       );
+
+      // Compact logo for document headers (PDF export etc.): transparent
+      // background, minimal padding — no adaptive-icon safe zone to leave
+      // room for, so it fills much more of its own square than the
+      // foreground layer above.
+      await _exportPng(
+        path: 'assets/icon/icon_doc.png',
+        size: 512,
+        contentFraction: 0.95,
+      );
     });
   });
 }
