@@ -27,6 +27,8 @@ class PantryItem {
     required this.category,
     required this.unit,
     required this.level,
+    this.totalPurchased = 0,
+    this.totalAmount = 0,
     this.updatedAt,
     this.expiryDate,
   });
@@ -36,6 +38,17 @@ class PantryItem {
   final String category;
   final String unit;
   final StockLevel level;
+
+  /// Running total of [unit]s bought over time (e.g. 1 last week + 1 this
+  /// week = 2) — accumulated server-side every time a purchase tops this
+  /// item up. Only counts purchases made since this field was introduced;
+  /// 0 means no purchase has been recorded yet, not that none is in stock.
+  final num totalPurchased;
+
+  /// Running total of ₹ spent on this item over time — same accumulation
+  /// as [totalPurchased], but only from purchases that had a price logged
+  /// (receipt scans and "Mark bought" both make price optional).
+  final num totalAmount;
   final DateTime? updatedAt;
   final DateTime? expiryDate;
 
@@ -52,6 +65,8 @@ class PantryItem {
       category: map['category'] as String? ?? 'Other',
       unit: map['unit'] as String? ?? 'pc',
       level: stockLevelFromString(map['level'] as String?),
+      totalPurchased: map['totalPurchased'] as num? ?? 0,
+      totalAmount: map['totalAmount'] as num? ?? 0,
       updatedAt: (map['updatedAt'] as Timestamp?)?.toDate(),
       expiryDate: (map['expiryDate'] as Timestamp?)?.toDate(),
     );

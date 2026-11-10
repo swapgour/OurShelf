@@ -13,6 +13,23 @@ String _statusText(StockLevel level) => switch (level) {
   StockLevel.out => 'Empty',
 };
 
+/// "2", "1.5" — trims a trailing ".0", or "—" when no purchase has been
+/// recorded for this item yet (not the same as a quantity of zero).
+String _quantityText(num totalPurchased) {
+  if (totalPurchased <= 0) return '—';
+  return totalPurchased == totalPurchased.roundToDouble()
+      ? totalPurchased.toStringAsFixed(0)
+      : totalPurchased.toString();
+}
+
+/// "Rs 290", or "—" when no purchase of this item had a price logged.
+/// Spelled out rather than "₹" — the PDF's default font has no glyph for
+/// the rupee sign and would render it as a missing-character box.
+String _amountText(num totalAmount) {
+  if (totalAmount <= 0) return '—';
+  return 'Rs ${totalAmount.toStringAsFixed(0)}';
+}
+
 Future<Uint8List> _buildPdfBytes(List<PantryItem> items) async {
   final doc = pw.Document();
 
@@ -72,10 +89,16 @@ Future<Uint8List> _buildPdfBytes(List<PantryItem> items) async {
           ),
           pw.SizedBox(height: 4),
           pw.TableHelper.fromTextArray(
-            headers: ['Product', 'Unit', 'Status'],
+            headers: ['Product', 'Quantity', 'Unit', 'Amount', 'Status'],
             data: [
               for (final item in byCategory[category]!)
-                [item.name, item.unit, _statusText(item.level)],
+                [
+                  item.name,
+                  _quantityText(item.totalPurchased),
+                  item.unit,
+                  _amountText(item.totalAmount),
+                  _statusText(item.level),
+                ],
             ],
             cellStyle: const pw.TextStyle(fontSize: 10),
             headerStyle: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
@@ -83,9 +106,11 @@ Future<Uint8List> _buildPdfBytes(List<PantryItem> items) async {
             cellAlignment: pw.Alignment.centerLeft,
             cellPadding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 4),
             columnWidths: {
-              0: const pw.FlexColumnWidth(3),
-              1: const pw.FlexColumnWidth(1.5),
-              2: const pw.FlexColumnWidth(1.5),
+              0: const pw.FlexColumnWidth(2.6),
+              1: const pw.FlexColumnWidth(1.1),
+              2: const pw.FlexColumnWidth(1.1),
+              3: const pw.FlexColumnWidth(1.2),
+              4: const pw.FlexColumnWidth(1.3),
             },
           ),
         ],

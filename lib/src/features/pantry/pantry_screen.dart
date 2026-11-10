@@ -65,6 +65,21 @@ Color _statusColor(StockLevel level) => switch (level) {
   StockLevel.out => ourShelfError,
 };
 
+/// "2" / "1.5" — trims a trailing ".0". Null when no purchase has been
+/// recorded for this item yet (not the same as a quantity of zero).
+String? _totalPurchasedText(num totalPurchased) {
+  if (totalPurchased <= 0) return null;
+  return totalPurchased == totalPurchased.roundToDouble()
+      ? totalPurchased.toStringAsFixed(0)
+      : totalPurchased.toString();
+}
+
+/// "₹290" — null when no purchase of this item had a price logged.
+String? _totalAmountText(num totalAmount) {
+  if (totalAmount <= 0) return null;
+  return '₹${totalAmount.toStringAsFixed(0)}';
+}
+
 enum _StockFilter { all, available, low, empty }
 
 enum _SortOption { alphabetical, category, stockLevel, recentlyUpdated }
@@ -117,16 +132,25 @@ class _PantryScreenState extends ConsumerState<PantryScreen> {
     try {
       final items = await ref.read(shoppingItemsProvider(widget.groupId).future);
       final toSync = items
-          .where((i) => i.status == ItemStatus.bought && !billCategories.contains(i.category))
+          .where(
+            (i) =>
+                i.status == ItemStatus.bought &&
+                !i.pantrySynced &&
+                !billCategories.contains(i.category),
+          )
           .toList();
       final pantryRepo = ref.read(pantryRepositoryProvider);
+      final shoppingRepo = ref.read(shoppingListRepositoryProvider);
       for (final item in toSync) {
         await pantryRepo.topUpFromPurchase(
           groupId: widget.groupId,
           name: item.name,
           category: item.category,
           unit: item.unit,
+          quantity: item.quantity,
+          price: item.price,
         );
+        await shoppingRepo.markPantrySynced(groupId: widget.groupId, itemId: item.id);
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -611,9 +635,19 @@ class _PantryRow extends ConsumerWidget {
                     ),
                     Row(
                       children: [
-                        Text(
-                          item.unit,
-                          style: TextStyle(color: ourShelfTextSecondary, fontSize: 11.5),
+                        Flexible(
+                          child: Text(
+                            [
+                              _totalPurchasedText(item.totalPurchased) == null
+                                  ? item.unit
+                                  : '${_totalPurchasedText(item.totalPurchased)} ${item.unit} total',
+                              if (_totalAmountText(item.totalAmount) != null)
+                                _totalAmountText(item.totalAmount)!,
+                            ].join('  •  '),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(color: ourShelfTextSecondary, fontSize: 11.5),
+                          ),
                         ),
                         if (unitLooksOffForCategory(item.category, item.unit)) ...[
                           const SizedBox(width: 6),
@@ -866,6 +900,28 @@ class _PantryDetailSheetState extends ConsumerState<_PantryDetailSheet> {
                 ),
                 const SizedBox(height: 10),
               ],
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.inventory_2_outlined),
+                title: const Text('Total purchased'),
+                subtitle: const Text('Adds up every purchase since this was introduced'),
+                trailing: Text(
+                  _totalPurchasedText(item.totalPurchased) == null
+                      ? 'Not tracked yet'
+                      : '${_totalPurchasedText(item.totalPurchased)} ${item.unit}',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.currency_rupee_outlined),
+                title: const Text('Total amount spent'),
+                subtitle: const Text('Only counts purchases with a price logged'),
+                trailing: Text(
+                  _totalAmountText(item.totalAmount) ?? 'Not tracked yet',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.event_outlined),

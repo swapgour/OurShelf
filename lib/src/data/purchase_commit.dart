@@ -69,6 +69,8 @@ Future<int> commitPurchaseMatches({
       name: name,
       category: category,
       unit: unit,
+      quantity: match.line.quantity ?? '1',
+      price: price,
     );
     added++;
   }

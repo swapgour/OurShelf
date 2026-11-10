@@ -32,20 +32,29 @@ class PantryRepository {
   }
 
   /// Tops a pantry item back up to "full" after a purchase, creating the
-  /// pantry entry the first time this item is bought.
+  /// pantry entry the first time this item is bought, and adds [quantity]
+  /// to its running [PantryItem.totalPurchased] total (e.g. 1 bought last
+  /// week + 1 bought this week shows a total of 2). [price], when given,
+  /// adds to [PantryItem.totalAmount] the same way.
   Future<void> topUpFromPurchase({
     required String groupId,
     required String name,
     required String category,
     required String unit,
+    required String quantity,
+    double? price,
   }) {
-    return _pantry(groupId).doc(_idFor(name)).set({
+    final parsedQuantity = num.tryParse(quantity.trim()) ?? 1;
+    final data = <String, dynamic>{
       'name': name,
       'category': category,
       'unit': unit,
       'level': 'full',
+      'totalPurchased': FieldValue.increment(parsedQuantity),
       'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+    };
+    if (price != null) data['totalAmount'] = FieldValue.increment(price);
+    return _pantry(groupId).doc(_idFor(name)).set(data, SetOptions(merge: true));
   }
 
   Future<void> setLevel({

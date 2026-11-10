@@ -15,6 +15,7 @@ class ShoppingItem {
     this.paidByName,
     this.createdAt,
     this.boughtAt,
+    this.pantrySynced = false,
   });
 
   final String id;
@@ -28,6 +29,11 @@ class ShoppingItem {
   final String? paidByName;
   final DateTime? createdAt;
   final DateTime? boughtAt;
+
+  /// Whether this purchase has already been added to Pantry's running
+  /// total — set the moment it's marked bought / logged, so the "Sync from
+  /// bought items" backfill button never double-counts it.
+  final bool pantrySynced;
 
   factory ShoppingItem.fromDoc(String id, Map<String, dynamic> map) {
     return ShoppingItem(
@@ -44,6 +50,7 @@ class ShoppingItem {
       paidByName: map['paidByName'] as String?,
       createdAt: (map['createdAt'] as Timestamp?)?.toDate(),
       boughtAt: (map['boughtAt'] as Timestamp?)?.toDate(),
+      pantrySynced: map['pantrySynced'] as bool? ?? false,
     );
   }
 }

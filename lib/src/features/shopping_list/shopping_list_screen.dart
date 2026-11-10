@@ -660,6 +660,8 @@ class _ItemTile extends ConsumerWidget {
             name: item.name,
             category: item.category,
             unit: item.unit,
+            quantity: item.quantity,
+            price: result.price,
           );
       await ref.read(activityRepositoryProvider).log(
         groupId: groupId,

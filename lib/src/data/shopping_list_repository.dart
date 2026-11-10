@@ -129,6 +129,7 @@ class ShoppingListRepository {
       'createdAt': FieldValue.serverTimestamp(),
       'boughtAt': boughtAt != null ? Timestamp.fromDate(boughtAt) : FieldValue.serverTimestamp(),
       'boughtByUid': addedByUid,
+      'pantrySynced': true,
     };
     if (price != null) data['price'] = price;
     if (paidByName != null) data['paidByName'] = paidByName;
@@ -198,6 +199,7 @@ class ShoppingListRepository {
       'status': 'bought',
       'boughtAt': FieldValue.serverTimestamp(),
       'boughtByUid': boughtByUid,
+      'pantrySynced': true,
     };
     if (price != null) data['price'] = price;
     if (paidByName != null) data['paidByName'] = paidByName;
@@ -251,6 +253,13 @@ class ShoppingListRepository {
         ),
       );
     return purchases;
+  }
+
+  /// Flags an item as already counted into Pantry's running total — used
+  /// after the "Sync from bought items" backfill tops it up, so a later
+  /// backfill run doesn't add the same purchase again.
+  Future<void> markPantrySynced({required String groupId, required String itemId}) {
+    return _items(groupId).doc(itemId).update({'pantrySynced': true});
   }
 
   Future<void> deleteItem({required String groupId, required String itemId}) {
