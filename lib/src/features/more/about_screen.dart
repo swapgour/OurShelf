@@ -4,7 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../app.dart';
 import '../../data/release_notes.dart';
 
-const _appVersion = '1.1.0';
+const _appVersion = '1.2.0';
 const _developerLinkedInUrl = 'https://www.linkedin.com/in/swapnilgour/';
 
 class AboutScreen extends StatelessWidget {

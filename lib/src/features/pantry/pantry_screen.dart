@@ -350,11 +350,11 @@ class _PantryScreenState extends ConsumerState<PantryScreen> {
                 ),
               ),
               if (categories.length > 1)
-                SizedBox(
-                  height: 36,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
                       _CategoryChip(
                         label: 'All',
@@ -362,15 +362,13 @@ class _PantryScreenState extends ConsumerState<PantryScreen> {
                         selected: _selectedCategory == null,
                         onTap: () => setState(() => _selectedCategory = null),
                       ),
-                      for (final c in categories) ...[
-                        const SizedBox(width: 8),
+                      for (final c in categories)
                         _CategoryChip(
                           label: c,
                           count: searched.where((i) => i.category == c).length,
                           selected: _selectedCategory == c,
                           onTap: () => setState(() => _selectedCategory = c),
                         ),
-                      ],
                     ],
                   ),
                 ),

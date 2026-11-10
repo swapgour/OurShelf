@@ -1438,34 +1438,27 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
                   ],
                 ),
               ),
-              SizedBox(
-                height: 40,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: ActionChip(
-                        avatar: const Icon(Icons.content_paste, size: 16),
-                        label: const Text('Paste a list'),
-                        onPressed: () => showModalBottomSheet(
-                          context: context,
-                          isScrollControlled: true,
-                          builder: (_) => _PasteListSheet(groupId: widget.groupId),
-                        ),
+                    ActionChip(
+                      avatar: const Icon(Icons.content_paste, size: 16),
+                      label: const Text('Paste a list'),
+                      onPressed: () => showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        builder: (_) => _PasteListSheet(groupId: widget.groupId),
                       ),
                     ),
-                    ...starterTemplates.map(
-                      (t) => Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: ActionChip(
-                          avatar: const Icon(Icons.auto_awesome, size: 16),
-                          label: Text(t.name),
-                          onPressed: () => _loadTemplate(t),
-                        ),
+                    for (final t in starterTemplates)
+                      ActionChip(
+                        avatar: const Icon(Icons.auto_awesome, size: 16),
+                        label: Text(t.name),
+                        onPressed: () => _loadTemplate(t),
                       ),
-                    ),
                   ],
                 ),
               ),
@@ -1478,35 +1471,28 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
                   if (frequent.isEmpty && history.isEmpty) {
                     return const SizedBox.shrink();
                   }
-                  return SizedBox(
-                    height: 40,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
                       children: [
-                        Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: ActionChip(
-                            avatar: const Icon(Icons.replay, size: 16),
-                            label: const Text('Repeat last month'),
-                            onPressed: () => _repeatLastMonth(history),
-                          ),
+                        ActionChip(
+                          avatar: const Icon(Icons.replay, size: 16),
+                          label: const Text('Repeat last month'),
+                          onPressed: () => _repeatLastMonth(history),
                         ),
-                        ...frequent.map(
-                          (item) => Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: ActionChip(
-                              avatar: const Icon(Icons.star, size: 16),
-                              label: Text(item.name),
-                              onPressed: () => _add(
-                                name: item.name,
-                                category: item.category,
-                                quantity: item.quantity,
-                                unit: item.unit,
-                              ),
+                        for (final item in frequent)
+                          ActionChip(
+                            avatar: const Icon(Icons.star, size: 16),
+                            label: Text(item.name),
+                            onPressed: () => _add(
+                              name: item.name,
+                              category: item.category,
+                              quantity: item.quantity,
+                              unit: item.unit,
                             ),
                           ),
-                        ),
                       ],
                     ),
                   );

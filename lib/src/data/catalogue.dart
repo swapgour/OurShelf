@@ -148,6 +148,57 @@ const List<CatalogueItem> starterCatalogue = [
   CatalogueItem('Baby powder', 'Baby & pet', 'pc', Icons.child_care),
   CatalogueItem('Pet food', 'Baby & pet', 'pack', Icons.pets),
   CatalogueItem('Pet litter', 'Baby & pet', 'pack', Icons.pets),
+  // Pooja & festive — diyas, incense, rangoli: common household staples
+  // with no natural home in a grocery-only taxonomy.
+  CatalogueItem('Camphor', 'Pooja & festive', 'pack', Icons.local_fire_department_outlined),
+  CatalogueItem('Incense sticks', 'Pooja & festive', 'pack', Icons.local_fire_department_outlined),
+  CatalogueItem('Deepam oil', 'Pooja & festive', 'bottle', Icons.local_fire_department_outlined),
+  CatalogueItem('Diya', 'Pooja & festive', 'pack', Icons.local_fire_department_outlined),
+  CatalogueItem('Pooja items', 'Pooja & festive', 'pack', Icons.self_improvement),
+  CatalogueItem('Rangoli colours', 'Pooja & festive', 'pack', Icons.palette_outlined),
+  CatalogueItem('Cotton wicks', 'Pooja & festive', 'pack', Icons.local_fire_department_outlined),
+  CatalogueItem('Kumkum', 'Pooja & festive', 'pc', Icons.self_improvement),
+
+  // More spices & masalas (real-world brand/regional names)
+  CatalogueItem('Black pepper', 'Spices & masalas', '100 g', Icons.spa),
+  CatalogueItem('Elaichi (Cardamom)', 'Spices & masalas', '50 g', Icons.spa),
+  CatalogueItem('Coriander powder', 'Spices & masalas', '100 g', Icons.spa),
+  CatalogueItem('Sambar powder', 'Spices & masalas', '200 g', Icons.spa),
+  CatalogueItem('Mustard seeds (Rai)', 'Spices & masalas', '100 g', Icons.spa),
+  CatalogueItem('Tamarind', 'Spices & masalas', '200 g', Icons.spa),
+
+  // More grains, flours & dals
+  CatalogueItem('Besan (gram flour)', 'Grains & flours', 'kg', Icons.grain),
+  CatalogueItem('Daliya (broken wheat)', 'Grains & flours', 'kg', Icons.grain),
+  CatalogueItem('Dosa batter', 'Grains & flours', 'kg', Icons.grain),
+  CatalogueItem('Millet', 'Grains & flours', 'kg', Icons.grain),
+  CatalogueItem('Red rice', 'Grains & flours', 'kg', Icons.rice_bowl),
+  CatalogueItem('Broken rice', 'Grains & flours', 'kg', Icons.rice_bowl),
+  CatalogueItem('Sabudana', 'Grains & flours', '500 g', Icons.grain),
+  CatalogueItem('Rava idli mix', 'Grains & flours', 'pack', Icons.grain),
+  CatalogueItem('Kabuli chana', 'Pulses & dals', 'kg', Icons.grain),
+  CatalogueItem('Urad dal', 'Pulses & dals', 'kg', Icons.grain),
+  CatalogueItem('Soya chunks', 'Pulses & dals', 'pack', Icons.grain),
+
+  // More fruits & vegetables
+  CatalogueItem('Guava', 'Fruits', 'kg', Icons.apple),
+  CatalogueItem('Lemon', 'Fruits', '250 g', Icons.circle),
+  CatalogueItem('Brinjal', 'Vegetables', 'kg', Icons.eco),
+  CatalogueItem('Carrot', 'Vegetables', 'kg', Icons.eco),
+  CatalogueItem('Cauliflower', 'Vegetables', 'pc', Icons.eco),
+  CatalogueItem('Green peas', 'Vegetables', '250 g', Icons.eco),
+
+  // More oils & ghee
+  CatalogueItem('Refined oil', 'Oils & ghee', '1 L', Icons.opacity),
+
+  // More snacks & beverages
+  CatalogueItem('Badam (Almonds)', 'Snacks & beverages', '200 g', Icons.icecream),
+  CatalogueItem('Sweets', 'Snacks & beverages', 'pack', Icons.icecream),
+  CatalogueItem('Sharbat', 'Snacks & beverages', '750 ml', Icons.local_bar),
+
+  // More cleaning & household
+  CatalogueItem('Dustpan', 'Cleaning & household', 'pc', Icons.cleaning_services),
+  CatalogueItem('Tissues', 'Cleaning & household', 'pack', Icons.receipt_long),
 ];
 
 /// Common short forms, brand-to-generic links, and Hindi/Kannada grocery
@@ -198,6 +249,56 @@ const catalogueAliases = <String, String>{
   'nappies': 'Diapers',
   'dog food': 'Pet food',
   'cat food': 'Pet food',
+  // Regional (mostly Kannada) names and reordered/typo'd forms that fuzzy
+  // matching alone wouldn't reliably catch — each confirmed against a real
+  // "Other"-bucketed item name.
+  'chilli green': 'Green chilli',
+  'green chilli': 'Green chilli',
+  'besan': 'Besan (gram flour)',
+  'besan (kadale hitu)': 'Besan (gram flour)',
+  'kadale hitu': 'Besan (gram flour)',
+  'kadale hittu': 'Besan (gram flour)',
+  'daliya': 'Daliya (broken wheat)',
+  'dalia': 'Daliya (broken wheat)',
+  'dosa battar': 'Dosa batter',
+  'dosa batter': 'Dosa batter',
+  'elaichi': 'Elaichi (Cardamom)',
+  'cardamom': 'Elaichi (Cardamom)',
+  'dhaniya powder': 'Coriander powder',
+  'kothambari pudi': 'Coriander powder',
+  'sambar powder': 'Sambar powder',
+  'sambar pudi': 'Sambar powder',
+  'rai': 'Mustard seeds (Rai)',
+  'rai (sosive)': 'Mustard seeds (Rai)',
+  'sosive': 'Mustard seeds (Rai)',
+  'tamarind': 'Tamarind',
+  'hunase hannu': 'Tamarind',
+  'imli': 'Tamarind',
+  'kabuli chana': 'Kabuli chana',
+  'chole chana': 'Kabuli chana',
+  'udad dal': 'Urad dal',
+  'uddina bele': 'Urad dal',
+  'kachi ghani oil': 'Mustard oil',
+  'gold refined oil': 'Refined oil',
+  'groundnut': 'Groundnut oil',
+  'badam': 'Badam (Almonds)',
+  'badami': 'Badam (Almonds)',
+  'almonds': 'Badam (Almonds)',
+  'sweet': 'Sweets',
+  'mithai': 'Sweets',
+  'frozen green peas': 'Green peas',
+  'akki': 'Rice',
+  'broom stick': 'Broom',
+  'broomstick': 'Broom',
+  'dust pan': 'Dustpan',
+  'dust pan steel': 'Dustpan',
+  'camphor': 'Camphor',
+  'karpura': 'Camphor',
+  'deepam oil': 'Deepam oil',
+  'pooja items': 'Pooja items',
+  'diwali pooja items': 'Pooja items',
+  'surya rangoli jar': 'Rangoli colours',
+  'rangoli': 'Rangoli colours',
 };
 
 const List<String> catalogueCategories = [
@@ -213,4 +314,5 @@ const List<String> catalogueCategories = [
   'Cleaning & household',
   'Personal care',
   'Baby & pet',
+  'Pooja & festive',
 ];

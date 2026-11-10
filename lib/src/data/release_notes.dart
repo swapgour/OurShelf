@@ -12,6 +12,22 @@ class ReleaseNote {
 /// commit log.
 const releaseNotes = [
   ReleaseNote(
+    version: '1.2.0',
+    date: 'Nov 2026',
+    lines: [
+      'Added: products auto-categorize everywhere (manual add included) using a shared catalogue of 150+ items, aliases and regional names',
+      'Added: one-tap "Fix Other categories" to recategorize existing items',
+      'Added: redesigned Pantry — search, category tabs, compact rows, filters & sorting',
+      'Added: Pantry PDF export and share',
+      'Added: Document History — every scanned/uploaded bill is now permanently saved and searchable',
+      'Added: low-stock push notifications; AI-powered receipt scanning for messy/multi-column bills',
+      'Added: Pooja & festive category for diyas, camphor, rangoli and similar items',
+      'Fixed: PDF scan silently failing on long order-confirmation pages',
+      'Fixed: category/template chips no longer hide behind an undiscoverable scroll',
+      'Fixed: several dark-mode contrast issues',
+    ],
+  ),
+  ReleaseNote(
     version: '1.1.0',
     date: 'Nov 2026',
     lines: [

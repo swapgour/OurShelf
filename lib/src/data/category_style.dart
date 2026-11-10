@@ -13,6 +13,7 @@ const categoryIcons = <String, IconData>{
   'Cleaning & household': Icons.cleaning_services_outlined,
   'Personal care': Icons.soap_outlined,
   'Baby & pet': Icons.child_care_outlined,
+  'Pooja & festive': Icons.local_fire_department_outlined,
   // Household bills & transfers — not groceries, but tracked the same way
   // so they share Expenses/Reports totals and the Activity feed for free.
   'House EMI': Icons.home_work_outlined,
