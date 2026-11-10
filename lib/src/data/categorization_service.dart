@@ -63,6 +63,23 @@ const matchThreshold = 0.72;
 /// migration produces.
 typedef CategoryChange = ({String name, String oldCategory, String newCategory});
 
+CatalogueItem? _findCatalogueEntry(String name) {
+  for (final entry in starterCatalogue) {
+    if (entry.name == name) return entry;
+  }
+  return null;
+}
+
+/// True when [needle] appears in [haystack] as a whole word/phrase — not
+/// just anywhere mid-word — so e.g. "badam" matches inside "premia badam
+/// badami" but wouldn't match inside some unrelated "badambar".
+bool _containsWholeWord(String haystack, String needle) {
+  if (haystack == needle) return true;
+  return RegExp(
+    '(^|\\s)${RegExp.escape(needle)}(\\s|\$)',
+  ).hasMatch(haystack);
+}
+
 /// Looks up [name] against the known-alias map first (handles short forms,
 /// Hindi/Kannada grocery terms, and brand↔generic links that spell nothing
 /// like the canonical catalogue entry), then falls back to fuzzy matching
@@ -72,13 +89,39 @@ CatalogueItem? matchProductCategory(String name) {
   final normalized = normalizeProductName(name);
   if (normalized.isEmpty) return null;
 
+  // 1. The whole product name matches a known alias or catalogue entry
+  // exactly.
   final aliasTarget = catalogueAliases[normalized];
   if (aliasTarget != null) {
-    for (final entry in starterCatalogue) {
-      if (entry.name == aliasTarget) return entry;
-    }
+    final exact = _findCatalogueEntry(aliasTarget);
+    if (exact != null) return exact;
   }
 
+  // 2. A known alias appears as a whole word/phrase inside a longer name —
+  // e.g. "Premia Badam (Badami)" contains the "badam" alias, "Besan
+  // (Kadale Hitu)" contains the "kadale hitu" alias. Real pantry entries
+  // are often "<brand/descriptor> <generic term> (<regional name>)" rather
+  // than a bare alias, so this is checked before fuzzy similarity, which
+  // would otherwise score these too low (the extra words dilute the edit
+  // distance). Picks the longest/most-specific matching alias.
+  String? bestAliasTarget;
+  var bestAliasLength = 0;
+  for (final entry in catalogueAliases.entries) {
+    final normalizedKey = normalizeProductName(entry.key);
+    if (normalizedKey.isEmpty) continue;
+    if (normalizedKey.length > bestAliasLength &&
+        _containsWholeWord(normalized, normalizedKey)) {
+      bestAliasTarget = entry.value;
+      bestAliasLength = normalizedKey.length;
+    }
+  }
+  if (bestAliasTarget != null) {
+    final match = _findCatalogueEntry(bestAliasTarget);
+    if (match != null) return match;
+  }
+
+  // 3. Fuzzy similarity against the catalogue itself (typos, plurals,
+  // substrings of the canonical name).
   CatalogueItem? best;
   double bestScore = 0;
   for (final entry in starterCatalogue) {
