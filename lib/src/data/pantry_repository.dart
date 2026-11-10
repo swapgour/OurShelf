@@ -100,22 +100,26 @@ class PantryRepository {
     });
   }
 
-  /// Same one-time fix-up as [ShoppingListRepository.recategorizeOtherItems],
-  /// for pantry entries. Returns the names that were changed.
-  Future<List<String>> recategorizeOtherItems(String groupId) async {
-    final snap = await _pantry(
-      groupId,
-    ).where('category', isEqualTo: 'Other').get();
+  /// Same one-time migration as
+  /// [ShoppingListRepository.recategorizeAllItems], for pantry entries.
+  /// Never touches [PantryItem.unit] or [StockLevel] — category only.
+  Future<List<CategoryChange>> recategorizeAllItems(
+    String groupId,
+    Map<String, String> learnedAliases,
+  ) async {
+    final snap = await _pantry(groupId).get();
     final batch = _firestore.batch();
-    final changed = <String>[];
+    final changes = <CategoryChange>[];
     for (final doc in snap.docs) {
-      final name = doc.data()['name'] as String? ?? '';
-      final matched = matchProductCategory(name);
-      if (matched == null) continue;
-      batch.update(doc.reference, {'category': matched.category});
-      changed.add(name);
+      final data = doc.data();
+      final name = data['name'] as String? ?? '';
+      final oldCategory = data['category'] as String? ?? 'Other';
+      final newCategory = resolveMigratedCategory(name, oldCategory, learnedAliases);
+      if (newCategory == null) continue;
+      batch.update(doc.reference, {'category': newCategory});
+      changes.add((name: name, oldCategory: oldCategory, newCategory: newCategory));
     }
-    if (changed.isNotEmpty) await batch.commit();
-    return changed;
+    if (changes.isNotEmpty) await batch.commit();
+    return changes;
   }
 }

@@ -257,25 +257,29 @@ class ShoppingListRepository {
     return _items(groupId).doc(itemId).delete();
   }
 
-  /// One-time fix-up: re-runs every item currently stuck in "Other" through
-  /// the categorization service now that it actually matches products
-  /// manually typed in (previously only scanning/pasting used it), and
-  /// corrects any that now resolve to a real category. Leaves genuinely
-  /// unrecognized products in "Other". Returns the names that were changed.
-  Future<List<String>> recategorizeOtherItems(String groupId) async {
-    final snap = await _items(
-      groupId,
-    ).where('category', isEqualTo: 'Other').get();
+  /// One-time migration: re-evaluates EVERY item's category (not just ones
+  /// stuck in "Other") against the categorization service — corrects an
+  /// item that was already miscategorized under the old taxonomy, renames
+  /// old category names to their 1.2.0 equivalents, and leaves genuinely
+  /// unrecognized custom entries untouched. See [resolveMigratedCategory].
+  /// Returns a before/after report of every change actually made.
+  Future<List<CategoryChange>> recategorizeAllItems(
+    String groupId,
+    Map<String, String> learnedAliases,
+  ) async {
+    final snap = await _items(groupId).get();
     final batch = _firestore.batch();
-    final changed = <String>[];
+    final changes = <CategoryChange>[];
     for (final doc in snap.docs) {
-      final name = doc.data()['name'] as String? ?? '';
-      final matched = matchProductCategory(name);
-      if (matched == null) continue;
-      batch.update(doc.reference, {'category': matched.category});
-      changed.add(name);
+      final data = doc.data();
+      final name = data['name'] as String? ?? '';
+      final oldCategory = data['category'] as String? ?? 'Other';
+      final newCategory = resolveMigratedCategory(name, oldCategory, learnedAliases);
+      if (newCategory == null) continue;
+      batch.update(doc.reference, {'category': newCategory});
+      changes.add((name: name, oldCategory: oldCategory, newCategory: newCategory));
     }
-    if (changed.isNotEmpty) await batch.commit();
-    return changed;
+    if (changes.isNotEmpty) await batch.commit();
+    return changes;
   }
 }

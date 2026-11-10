@@ -162,3 +162,79 @@ class CountUpText extends StatelessWidget {
     );
   }
 }
+
+/// A horizontally-scrolling row of chips that gives itself a brief, one-time
+/// "peek" scroll (right a bit, then back) right after it first appears —
+/// so a user who's never used the screen before actually sees that there's
+/// more to scroll to, instead of a static row that looks complete at a
+/// glance. Only peeks once per time this widget is mounted (e.g. once per
+/// screen visit), and does nothing if there's nothing to scroll to.
+class AutoPeekScrollRow extends StatefulWidget {
+  const AutoPeekScrollRow({
+    super.key,
+    required this.children,
+    this.height = 40,
+    this.padding = const EdgeInsets.symmetric(horizontal: 16),
+    this.spacing = 8,
+  });
+
+  final List<Widget> children;
+  final double height;
+  final EdgeInsets padding;
+  final double spacing;
+
+  @override
+  State<AutoPeekScrollRow> createState() => _AutoPeekScrollRowState();
+}
+
+class _AutoPeekScrollRowState extends State<AutoPeekScrollRow> {
+  final _controller = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _peek());
+  }
+
+  Future<void> _peek() async {
+    if (!mounted || !_controller.hasClients) return;
+    final max = _controller.position.maxScrollExtent;
+    if (max <= 0) return;
+    await Future.delayed(const Duration(milliseconds: 500));
+    if (!mounted) return;
+    await _controller.animateTo(
+      max < 140 ? max : 140,
+      duration: const Duration(milliseconds: 700),
+      curve: Curves.easeOut,
+    );
+    if (!mounted) return;
+    await Future.delayed(const Duration(milliseconds: 350));
+    if (!mounted) return;
+    await _controller.animateTo(
+      0,
+      duration: const Duration(milliseconds: 600),
+      curve: Curves.easeIn,
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: widget.height,
+      child: ListView.separated(
+        controller: _controller,
+        scrollDirection: Axis.horizontal,
+        padding: widget.padding,
+        itemCount: widget.children.length,
+        separatorBuilder: (_, _) => SizedBox(width: widget.spacing),
+        itemBuilder: (_, i) => widget.children[i],
+      ),
+    );
+  }
+}

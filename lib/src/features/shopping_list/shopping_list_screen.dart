@@ -20,6 +20,7 @@ import '../groups/group_sheet.dart';
 import '../pantry/pantry_screen.dart';
 import '../reminders/reminders_screen.dart';
 import '../scan/scan_receipt_screen.dart';
+import '../../widgets/motion.dart';
 
 final _userProfileProvider = StreamProvider.autoDispose<UserProfile?>((ref) {
   final uid = ref.watch(authStateProvider).value?.uid;
@@ -151,7 +152,7 @@ class _HomeContent extends ConsumerWidget {
                 value: 'recategorize',
                 child: ListTile(
                   leading: Icon(Icons.auto_fix_high_outlined),
-                  title: Text('Fix "Other" categories'),
+                  title: Text('Reclassify all items'),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
@@ -330,32 +331,30 @@ class _HomeContent extends ConsumerWidget {
     );
   }
 
-  /// One-time fix-up for items stuck in "Other" from before manual "Add
-  /// item" used the categorization service — re-runs every such item (list
-  /// and pantry) through it now and corrects any that resolve.
+  /// One-time migration: re-evaluates every list and pantry item's category
+  /// — fixes ones stuck in "Other", corrects ones already miscategorized
+  /// under the old taxonomy (e.g. an oil that ended up under Grains &
+  /// Flours), and renames old category names to their 1.2.0 equivalents.
+  /// Shows a before/after report of exactly what changed.
   Future<void> _recategorizeOther(BuildContext context, WidgetRef ref) async {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Checking items in "Other"…')),
+      const SnackBar(content: Text('Reclassifying all items…')),
     );
     try {
-      final shoppingChanged = await ref
+      final learned = await ref
+          .read(categorizationRepositoryProvider)
+          .lookupAllLearned(groupId);
+      final shoppingChanges = await ref
           .read(shoppingListRepositoryProvider)
-          .recategorizeOtherItems(groupId);
-      final pantryChanged = await ref
+          .recategorizeAllItems(groupId, learned);
+      final pantryChanges = await ref
           .read(pantryRepositoryProvider)
-          .recategorizeOtherItems(groupId);
-      final changed = {...shoppingChanged, ...pantryChanged};
+          .recategorizeAllItems(groupId, learned);
+      final allChanges = [...shoppingChanges, ...pantryChanges];
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            changed.isEmpty
-                ? 'Nothing to fix — everything in "Other" is genuinely unrecognized'
-                : 'Recategorized ${changed.length} item${changed.length == 1 ? '' : 's'}: '
-                      '${changed.take(5).join(', ')}${changed.length > 5 ? '…' : ''}',
-          ),
-          duration: const Duration(seconds: 5),
-        ),
+      await showDialog(
+        context: context,
+        builder: (_) => _RecategorizeReportDialog(changes: allChanges),
       );
     } catch (e) {
       if (context.mounted) {
@@ -364,6 +363,56 @@ class _HomeContent extends ConsumerWidget {
         );
       }
     }
+  }
+}
+
+class _RecategorizeReportDialog extends StatelessWidget {
+  const _RecategorizeReportDialog({required this.changes});
+
+  final List<CategoryChange> changes;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(changes.isEmpty ? 'Nothing to change' : 'Reclassified ${changes.length} item${changes.length == 1 ? '' : 's'}'),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: changes.isEmpty
+            ? const Text(
+                'Everything already matches the current categories, or is a '
+                'custom entry that genuinely belongs in Other.',
+              )
+            : ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 360),
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: changes.length,
+                  itemBuilder: (context, i) {
+                    final c = changes[i];
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(c.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                          Text(
+                            '${c.oldCategory} → ${c.newCategory}',
+                            style: TextStyle(color: ourShelfTextSecondary, fontSize: 12.5),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Close'),
+        ),
+      ],
+    );
   }
 }
 
@@ -1438,29 +1487,24 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
                   ],
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    ActionChip(
-                      avatar: const Icon(Icons.content_paste, size: 16),
-                      label: const Text('Paste a list'),
-                      onPressed: () => showModalBottomSheet(
-                        context: context,
-                        isScrollControlled: true,
-                        builder: (_) => _PasteListSheet(groupId: widget.groupId),
-                      ),
+              AutoPeekScrollRow(
+                children: [
+                  ActionChip(
+                    avatar: const Icon(Icons.content_paste, size: 16),
+                    label: const Text('Paste a list'),
+                    onPressed: () => showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      builder: (_) => _PasteListSheet(groupId: widget.groupId),
                     ),
-                    for (final t in starterTemplates)
-                      ActionChip(
-                        avatar: const Icon(Icons.auto_awesome, size: 16),
-                        label: Text(t.name),
-                        onPressed: () => _loadTemplate(t),
-                      ),
-                  ],
-                ),
+                  ),
+                  for (final t in starterTemplates)
+                    ActionChip(
+                      avatar: const Icon(Icons.auto_awesome, size: 16),
+                      label: Text(t.name),
+                      onPressed: () => _loadTemplate(t),
+                    ),
+                ],
               ),
               const SizedBox(height: 8),
               FutureBuilder<List<ShoppingItem>>(
@@ -1471,30 +1515,25 @@ class _AddItemSheetState extends ConsumerState<_AddItemSheet> {
                   if (frequent.isEmpty && history.isEmpty) {
                     return const SizedBox.shrink();
                   }
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
+                  return AutoPeekScrollRow(
+                    children: [
+                      ActionChip(
+                        avatar: const Icon(Icons.replay, size: 16),
+                        label: const Text('Repeat last month'),
+                        onPressed: () => _repeatLastMonth(history),
+                      ),
+                      for (final item in frequent)
                         ActionChip(
-                          avatar: const Icon(Icons.replay, size: 16),
-                          label: const Text('Repeat last month'),
-                          onPressed: () => _repeatLastMonth(history),
-                        ),
-                        for (final item in frequent)
-                          ActionChip(
-                            avatar: const Icon(Icons.star, size: 16),
-                            label: Text(item.name),
-                            onPressed: () => _add(
-                              name: item.name,
-                              category: item.category,
-                              quantity: item.quantity,
-                              unit: item.unit,
-                            ),
+                          avatar: const Icon(Icons.star, size: 16),
+                          label: Text(item.name),
+                          onPressed: () => _add(
+                            name: item.name,
+                            category: item.category,
+                            quantity: item.quantity,
+                            unit: item.unit,
                           ),
-                      ],
-                    ),
+                        ),
+                    ],
                   );
                 },
               ),

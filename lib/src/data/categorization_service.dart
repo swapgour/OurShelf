@@ -59,6 +59,10 @@ double productNameSimilarity(String a, String b) {
 
 const matchThreshold = 0.72;
 
+/// One line of the before/after report the "Reclassify all items"
+/// migration produces.
+typedef CategoryChange = ({String name, String oldCategory, String newCategory});
+
 /// Looks up [name] against the known-alias map first (handles short forms,
 /// Hindi/Kannada grocery terms, and brand↔generic links that spell nothing
 /// like the canonical catalogue entry), then falls back to fuzzy matching
@@ -85,6 +89,56 @@ CatalogueItem? matchProductCategory(String name) {
     }
   }
   return bestScore >= matchThreshold ? best : null;
+}
+
+/// The pre-1.2.0 flat category names, mapped to their finalized
+/// equivalents — a straight rename for everything except "Snacks &
+/// beverages", which split into two new categories and so is handled by
+/// re-matching the item's name instead (see [resolveMigratedCategory]).
+const legacyCategoryRenames = <String, String>{
+  'Dairy & eggs': 'Dairy & Eggs',
+  'Grains & flours': 'Grains & Flours',
+  'Pulses & dals': 'Pulses & Dals',
+  'Spices & masalas': 'Spices & Masalas',
+  'Oils & ghee': 'Oils & Ghee',
+  'Bakery & breakfast': 'Breakfast & Cereals',
+  'Cleaning & household': 'Cleaning & Household',
+  'Personal care': 'Personal Care & Healthcare',
+  'Baby & pet': 'Baby & Pet',
+  'Pooja & festive': 'Pooja & Religious Items',
+};
+
+const _legacySplitCategory = 'Snacks & beverages';
+
+/// Resolves the corrected category for an EXISTING item as part of the
+/// one-time "Reclassify all items" migration (see [ShoppingListRepository
+/// .recategorizeAllItems] / [PantryRepository.recategorizeAllItems]).
+/// Returns null when nothing should change.
+///
+/// Order of precedence: a learned per-group alias always wins (an explicit
+/// choice a member already made); then a confident dictionary match — this
+/// is what corrects an item that was already miscategorized under the old
+/// system (e.g. "Gold Refined Oil" sitting in Grains & Flours), not just
+/// ones stuck in "Other"; only when neither finds anything does a plain old
+/// category get renamed to its new name, which preserves whatever bucket a
+/// member chose for an item the dictionary still doesn't recognize, rather
+/// than guessing or moving it to "Other".
+String? resolveMigratedCategory(
+  String name,
+  String currentCategory,
+  Map<String, String> learnedAliases,
+) {
+  final learned = learnedAliases[normalizeProductName(name)];
+  if (learned != null && learned != currentCategory) return learned;
+
+  final matched = matchProductCategory(name)?.category;
+  if (matched != null && matched != currentCategory) return matched;
+  if (matched != null) return null; // already correct
+
+  if (currentCategory == _legacySplitCategory) return 'Snacks & Sweets';
+  final renamed = legacyCategoryRenames[currentCategory];
+  if (renamed != null && renamed != currentCategory) return renamed;
+  return null;
 }
 
 String _aliasId(String groupId, String name) =>
@@ -115,6 +169,19 @@ class CategorizationRepository {
     final category = data?['category'] as String?;
     if (category == null) return null;
     return {'category': category, 'unit': data?['unit'] as String? ?? 'pc'};
+  }
+
+  /// All of a group's learned choices at once, keyed by normalized product
+  /// name — used by the "Reclassify all items" migration so it doesn't do
+  /// one Firestore read per item.
+  Future<Map<String, String>> lookupAllLearned(String groupId) async {
+    final snap = await _aliases(groupId).get();
+    return {
+      for (final doc in snap.docs)
+        if (doc.data()['category'] is String)
+          normalizeProductName(doc.data()['name'] as String? ?? doc.id):
+              doc.data()['category'] as String,
+    };
   }
 
   Future<void> saveLearned({

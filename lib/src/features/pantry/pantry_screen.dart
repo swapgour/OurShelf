@@ -350,27 +350,22 @@ class _PantryScreenState extends ConsumerState<PantryScreen> {
                 ),
               ),
               if (categories.length > 1)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
+                AutoPeekScrollRow(
+                  children: [
+                    _CategoryChip(
+                      label: 'All',
+                      count: searched.length,
+                      selected: _selectedCategory == null,
+                      onTap: () => setState(() => _selectedCategory = null),
+                    ),
+                    for (final c in categories)
                       _CategoryChip(
-                        label: 'All',
-                        count: searched.length,
-                        selected: _selectedCategory == null,
-                        onTap: () => setState(() => _selectedCategory = null),
+                        label: c,
+                        count: searched.where((i) => i.category == c).length,
+                        selected: _selectedCategory == c,
+                        onTap: () => setState(() => _selectedCategory = c),
                       ),
-                      for (final c in categories)
-                        _CategoryChip(
-                          label: c,
-                          count: searched.where((i) => i.category == c).length,
-                          selected: _selectedCategory == c,
-                          onTap: () => setState(() => _selectedCategory = c),
-                        ),
-                    ],
-                  ),
+                  ],
                 ),
               const SizedBox(height: 8),
               Padding(
@@ -614,9 +609,17 @@ class _PantryRow extends ConsumerWidget {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
                     ),
-                    Text(
-                      item.unit,
-                      style: TextStyle(color: ourShelfTextSecondary, fontSize: 11.5),
+                    Row(
+                      children: [
+                        Text(
+                          item.unit,
+                          style: TextStyle(color: ourShelfTextSecondary, fontSize: 11.5),
+                        ),
+                        if (unitLooksOffForCategory(item.category, item.unit)) ...[
+                          const SizedBox(width: 6),
+                          Icon(Icons.error_outline, size: 12, color: ourShelfWarning),
+                        ],
+                      ],
                     ),
                   ],
                 ),
@@ -823,6 +826,29 @@ class _PantryDetailSheetState extends ConsumerState<_PantryDetailSheet> {
                 }).toList(),
               ),
               const SizedBox(height: 18),
+              if (unitLooksOffForCategory(item.category, item.unit))
+                Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: ourShelfWarning.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: ourShelfWarning.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.error_outline, size: 16, color: ourShelfWarning),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '"${item.unit}" looks like a liquid measure for ${item.category} — '
+                          "worth checking this is right. We won't change it automatically.",
+                          style: TextStyle(fontSize: 12, color: ourShelfWarning),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               if (!widget.isViewer) ...[
                 Row(
                   children: [

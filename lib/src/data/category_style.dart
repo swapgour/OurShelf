@@ -1,19 +1,24 @@
 import 'package:flutter/material.dart';
 
 const categoryIcons = <String, IconData>{
-  'Dairy & eggs': Icons.egg_outlined,
-  'Fruits': Icons.apple,
   'Vegetables': Icons.eco_outlined,
-  'Grains & flours': Icons.grain,
-  'Pulses & dals': Icons.rice_bowl_outlined,
-  'Spices & masalas': Icons.local_fire_department_outlined,
-  'Oils & ghee': Icons.opacity,
-  'Bakery & breakfast': Icons.bakery_dining_outlined,
-  'Snacks & beverages': Icons.local_cafe_outlined,
-  'Cleaning & household': Icons.cleaning_services_outlined,
-  'Personal care': Icons.soap_outlined,
-  'Baby & pet': Icons.child_care_outlined,
-  'Pooja & festive': Icons.local_fire_department_outlined,
+  'Fruits': Icons.apple,
+  'Dairy & Eggs': Icons.egg_outlined,
+  'Grains & Flours': Icons.grain,
+  'Pulses & Dals': Icons.rice_bowl_outlined,
+  'Spices & Masalas': Icons.local_fire_department_outlined,
+  'Oils & Ghee': Icons.opacity,
+  'Dry Fruits & Nuts': Icons.icecream_outlined,
+  'Breakfast & Cereals': Icons.bakery_dining_outlined,
+  'Ready Mixes': Icons.soup_kitchen_outlined,
+  'Snacks & Sweets': Icons.fastfood_outlined,
+  'Beverages': Icons.local_cafe_outlined,
+  'Cleaning & Household': Icons.cleaning_services_outlined,
+  'Personal Care & Healthcare': Icons.soap_outlined,
+  'Pooja & Religious Items': Icons.self_improvement_outlined,
+  'Household Utilities': Icons.lightbulb_outline,
+  'Services & Expenses': Icons.handyman_outlined,
+  'Baby & Pet': Icons.child_care_outlined,
   // Household bills & transfers — not groceries, but tracked the same way
   // so they share Expenses/Reports totals and the Activity feed for free.
   'House EMI': Icons.home_work_outlined,
@@ -53,3 +58,28 @@ IconData iconForCategory(String category) =>
 
 Color colorForCategory(String category) =>
     categoryPalette[category.hashCode.abs() % categoryPalette.length];
+
+/// Categories whose products are normally sold/measured by weight or
+/// count, never by volume — used to flag a likely-stale unit (e.g.
+/// "Groundnut" still showing "1 L" from when it was miscategorized as an
+/// oil) without ever changing it automatically; the user reviews and
+/// corrects it by hand.
+const _solidCategories = {
+  'Dry Fruits & Nuts',
+  'Spices & Masalas',
+  'Pulses & Dals',
+  'Grains & Flours',
+  'Snacks & Sweets',
+  'Breakfast & Cereals',
+  'Ready Mixes',
+};
+
+bool unitLooksOffForCategory(String category, String unit) {
+  if (!_solidCategories.contains(category)) return false;
+  final u = unit.toLowerCase();
+  return u.contains('ml') ||
+      u.contains('litre') ||
+      u.contains('liter') ||
+      RegExp(r'(^|\s)l$').hasMatch(u.trim()) ||
+      u.contains('bottle');
+}
