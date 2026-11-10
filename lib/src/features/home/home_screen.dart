@@ -8,6 +8,7 @@ import '../../data/pantry_item.dart';
 import '../../data/providers.dart';
 import '../../data/shopping_item.dart';
 import '../../data/user_profile.dart';
+import '../../widgets/jar_shelf_icon.dart';
 import '../../widgets/motion.dart';
 import '../activity/activity_screen.dart';
 import '../ai/ask_ai_screen.dart';
@@ -77,11 +78,7 @@ class HomeScreen extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
               child: Row(
                 children: [
-                  ShaderMask(
-                    blendMode: BlendMode.srcIn,
-                    shaderCallback: (bounds) => royalGradient.createShader(bounds),
-                    child: const Icon(Icons.shelves, size: 26),
-                  ),
+                  const JarShelfIcon(size: 26),
                   const SizedBox(width: 8),
                   Text(
                     'OurShelf',

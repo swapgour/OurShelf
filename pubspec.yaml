@@ -69,6 +69,18 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
+
+# Regenerate the launcher icon with: dart run flutter_launcher_icons
+# The source PNGs are rendered from lib/src/widgets/jar_shelf_icon.dart by
+# tool/export_icon.dart (run `flutter test tool/export_icon.dart` after
+# changing that painter, then rerun the command above).
+flutter_launcher_icons:
+  android: "ic_launcher"
+  min_sdk_android: 21
+  image_path: "assets/icon/icon.png"
+  adaptive_icon_background: "#351653"
+  adaptive_icon_foreground: "assets/icon/icon_foreground.png"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

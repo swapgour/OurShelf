@@ -18,6 +18,8 @@ const releaseNotes = [
       'Added: products auto-categorize everywhere (manual add included) using a shared catalogue of 150+ items, aliases and regional names',
       'Added: one-tap "Reclassify all items" to correct existing items into the finalized 18-category list, with a before/after report',
       'Added: Pantry now tracks a running total quantity and amount spent per item (e.g. bought 1 last week + 1 this week shows 2) — shown on each Pantry item and on the PDF export',
+      'Changed: new brand mark — two pantry jars on a gold shelf, replacing the generic shelves icon on the splash screen, Home header and app icon',
+      'Changed: splash screen loading motion — gold sparkles orbiting the logo, not generic bouncing dots',
       'Added: redesigned Pantry — search, category tabs, compact rows, filters & sorting',
       'Added: Pantry PDF export and share',
       'Added: Document History — every scanned/uploaded bill is now permanently saved and searchable',

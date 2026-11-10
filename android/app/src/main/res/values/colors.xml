@@ -4,4 +4,5 @@
          native launch background and the animated splash hand off without
          a white flash in between. -->
     <color name="launch_background">#1A0033</color>
+	<color name="ic_launcher_background">#351653</color>
 </resources>

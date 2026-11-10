@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../app.dart';
+import '../../widgets/jar_shelf_icon.dart';
 import '../auth_gate.dart';
 
 /// The app's animated splash: the background glows and drifting bubbles
@@ -30,6 +31,12 @@ class _SplashScreenState extends State<SplashScreen>
   late final AnimationController _pulse;
   late final AnimationController _drift;
   late final AnimationController _shimmer;
+
+  // Two rings of sparkles orbiting the logo — this doubles as the splash's
+  // loading indicator, so there's no separate dots/bar/ribbon widget below
+  // the text.
+  late final AnimationController _orbitOuter;
+  late final AnimationController _orbitInner;
 
   @override
   void initState() {
@@ -96,6 +103,16 @@ class _SplashScreenState extends State<SplashScreen>
       duration: const Duration(milliseconds: 1800),
     )..repeat();
 
+    _orbitOuter = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 7000),
+    )..repeat();
+
+    _orbitInner = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 4200),
+    )..repeat();
+
     _navigateWhenReady();
   }
 
@@ -113,6 +130,8 @@ class _SplashScreenState extends State<SplashScreen>
     _pulse.dispose();
     _drift.dispose();
     _shimmer.dispose();
+    _orbitOuter.dispose();
+    _orbitInner.dispose();
     super.dispose();
   }
 
@@ -160,7 +179,7 @@ class _SplashScreenState extends State<SplashScreen>
             ),
             SafeArea(
               child: Center(
-                child: Listenable.merge([_entrance, _pulse, _shimmer]).let(
+                child: Listenable.merge([_entrance, _pulse, _shimmer, _orbitOuter, _orbitInner]).let(
                   (listenable) => AnimatedBuilder(
                     animation: listenable,
                     builder: (context, _) {
@@ -174,67 +193,43 @@ class _SplashScreenState extends State<SplashScreen>
                               angle: _logoRotation.value,
                               child: Transform.scale(
                                 scale: _logoScale.value * pulseScale,
-                                child: Stack(
-                                clipBehavior: Clip.none,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(24),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      shape: BoxShape.circle,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withValues(
-                                            alpha: 0.18,
-                                          ),
-                                          blurRadius: 24 + 10 * _pulse.value,
-                                          spreadRadius: 1 + 2 * _pulse.value,
-                                        ),
-                                      ],
-                                    ),
-                                    child: ShaderMask(
-                                      blendMode: BlendMode.srcIn,
-                                      shaderCallback: (bounds) =>
-                                          royalGradient.createShader(bounds),
-                                      child: const Icon(
-                                        Icons.shelves,
-                                        size: 64,
-                                      ),
-                                    ),
-                                  ),
-                                  // A small gold accent badge — the kind of
-                                  // premium "polish" detail a flat single
-                                  // icon doesn't have on its own.
-                                  Positioned(
-                                    right: -4,
-                                    bottom: -4,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(7),
-                                      decoration: BoxDecoration(
-                                        color: ourShelfAccent,
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
+                                child: SizedBox(
+                                  width: 128,
+                                  height: 128,
+                                  child: Stack(
+                                    clipBehavior: Clip.none,
+                                    alignment: Alignment.center,
+                                    children: [
+                                      // Two rings of sparkles orbiting the
+                                      // logo — this IS the splash's loading
+                                      // indicator, so nothing separate is
+                                      // needed below the title/tagline.
+                                      ..._outerSparkles(),
+                                      ..._innerSparkles(),
+                                      Container(
+                                        width: 100,
+                                        height: 100,
+                                        decoration: BoxDecoration(
                                           color: Colors.white,
-                                          width: 2.5,
+                                          shape: BoxShape.circle,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withValues(
+                                                alpha: 0.18,
+                                              ),
+                                              blurRadius: 24 + 10 * _pulse.value,
+                                              spreadRadius: 1 + 2 * _pulse.value,
+                                            ),
+                                          ],
                                         ),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withValues(alpha: 0.15),
-                                            blurRadius: 6,
-                                          ),
-                                        ],
+                                        padding: const EdgeInsets.all(22),
+                                        child: const JarShelfIcon(size: 56),
                                       ),
-                                      child: const Icon(
-                                        Icons.auto_awesome,
-                                        size: 14,
-                                        color: Color(0xFF4A148C),
-                                      ),
-                                    ),
+                                    ],
                                   ),
-                                ],
+                                ),
                               ),
                             ),
-                          ),
                           ),
                           const SizedBox(height: 28),
                           Opacity(
@@ -284,11 +279,6 @@ class _SplashScreenState extends State<SplashScreen>
                               ),
                             ),
                           ),
-                          const SizedBox(height: 44),
-                          Opacity(
-                            opacity: _textOpacity.value,
-                            child: _BouncingDots(controller: _pulse),
-                          ),
                         ],
                       );
                     },
@@ -301,46 +291,57 @@ class _SplashScreenState extends State<SplashScreen>
       ),
     );
   }
-}
 
-/// Three dots that bounce in a staggered wave — a livelier loader than a
-/// static spinner, and visibly "alive" even in a single screenshot.
-class _BouncingDots extends StatelessWidget {
-  const _BouncingDots({required this.controller});
+  static const _sparkleGold = Color(0xFFE9B52E);
+  static const _sparklePaleGold = Color(0xFFFFE9A8);
 
-  final AnimationController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 20,
-      child: AnimatedBuilder(
-        animation: controller,
-        builder: (context, _) {
-          return Row(
-            mainAxisSize: MainAxisSize.min,
-            children: List.generate(3, (i) {
-              final t = (controller.value + i * 0.2) % 1.0;
-              final bounce = math.sin(t * math.pi).clamp(0.0, 1.0);
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: Transform.translate(
-                  offset: Offset(0, -8 * bounce),
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.6 + 0.4 * bounce),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-              );
-            }),
-          );
-        },
+  /// One sparkle at the given orbit [radius]/[angle] (radians, 0 = up),
+  /// twinkling via the shared [_pulse] controller with a per-sparkle phase
+  /// offset so they don't all flicker in lockstep — same staggering idiom
+  /// as the drifting background bubbles above.
+  Widget _sparkle({required double radius, required double angle, required double size, required Color color, required double phase}) {
+    final tw = (_pulse.value + phase) % 1.0;
+    final twinkle = math.sin(tw * math.pi).clamp(0.0, 1.0);
+    return Transform.translate(
+      offset: Offset(radius * math.sin(angle), -radius * math.cos(angle)),
+      child: Opacity(
+        opacity: 0.3 + 0.7 * twinkle,
+        child: Transform.scale(
+          scale: 0.65 + 0.45 * twinkle,
+          child: Icon(Icons.auto_awesome, size: size, color: color),
+        ),
       ),
     );
+  }
+
+  List<Widget> _outerSparkles() {
+    const count = 6;
+    final base = _orbitOuter.value * 2 * math.pi;
+    return List.generate(count, (i) {
+      final angle = base + i * (2 * math.pi / count);
+      return _sparkle(
+        radius: 76,
+        angle: angle,
+        size: 17,
+        color: i.isEven ? _sparkleGold : _sparklePaleGold,
+        phase: i * 0.16,
+      );
+    });
+  }
+
+  List<Widget> _innerSparkles() {
+    const count = 3;
+    final base = math.pi / 6 - _orbitInner.value * 2 * math.pi;
+    return List.generate(count, (i) {
+      final angle = base + i * (2 * math.pi / count);
+      return _sparkle(
+        radius: 34,
+        angle: angle,
+        size: 10,
+        color: Colors.white,
+        phase: 0.3 + i * 0.22,
+      );
+    });
   }
 }
 
