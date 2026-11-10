@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'features/splash/splash_screen.dart';
 import 'theme/theme_controller.dart';
+import 'updates/app_update_service.dart';
 
 /// Lets non-widget code (the foreground push-notification handler) show a
 /// SnackBar without needing a BuildContext of its own.
@@ -179,6 +182,7 @@ class _OurShelfAppState extends ConsumerState<OurShelfApp>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    unawaited(const AppUpdateService().checkForUpdate());
   }
 
   @override

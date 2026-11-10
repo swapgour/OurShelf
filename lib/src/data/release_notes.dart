@@ -17,6 +17,7 @@ const releaseNotes = [
     lines: [
       'Added: products auto-categorize everywhere (manual add included) using a shared catalogue of 150+ items, aliases and regional names',
       'Added: one-tap "Reclassify all items" to correct existing items into the finalized 18-category list, with a before/after report',
+      'Added: the app now checks for updates on launch and offers to install a new release automatically once it has downloaded',
       'Added: Pantry now tracks a running total quantity and amount spent per item (e.g. bought 1 last week + 1 this week shows 2) — shown on each Pantry item and on the PDF export',
       'Changed: new brand mark — two pantry jars on a gold shelf, replacing the generic shelves icon on the splash screen, Home header, app icon and PDF export',
       'Fixed: Pantry PDF header is centered with the logo on top; untracked quantity/amount no longer show a broken glyph box',

@@ -47,6 +47,13 @@ app.*.map.json
 /android/app/release
 /android/.kotlin/
 
+# Release signing key + its passwords — never commit these. Losing this
+# .jks file means Google Play can never accept an update to this app's
+# listing again, so back it up somewhere safe outside git instead.
+/android/key.properties
+/android/app/*.jks
+/android/app/*.keystore
+
 # Widget Preview related
 .widget_preview/
 
